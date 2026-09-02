@@ -23,6 +23,9 @@ export function mountStudio(root, { snapshot = { config: presetDesign() }, servi
   reload.hidden = !service;
   const publish = el('button', service ? 'Publish Everywhere ↗' : 'Preview only', { type: 'button', class: 'primary' });
   actions.append(reload, revert, publish); heading.append(headingCopy, actions);
+  // Leave live editing outside the sample iframe; the destination retains existing role checks.
+  const editingNote = el('div', '', { class: 'notice studio-editing-note' });
+  editingNote.append(el('p', 'This area previews appearance. Edit homepage text, contact details, and maintenance mode in the live Page Settings.'), el('a', 'Open live Page Settings →', { href: service ? '#settings' : 'admin/index.html#settings', class: 'button' }));
   const message = el('p', service ? 'Published design loaded. Changes stay in preview until you publish.' : 'Safe playground · Sample content only. Sign in as System Admin to publish.', { class: 'studio-message', role: 'status', 'aria-live': 'polite' });
   const confirmation = el('div', '', { class: 'confirmation', hidden: true });
   confirmation.append(el('p', 'Publish this design to Public, System Admin, Content Admin, Login, Application, and Activation? Existing accounts and records will not change.'));
@@ -102,7 +105,7 @@ export function mountStudio(root, { snapshot = { config: presetDesign() }, servi
   const caption = el('div', '', { class: 'preview-caption' });
   const selected = el('span'); caption.append(selected, el('span', 'Sample content · Changes are not live'));
   preview.append(toolbar, canvas, caption); layout.append(controls, preview);
-  root.replaceChildren(heading, confirmation, layout, message);
+  root.replaceChildren(heading, editingNote, confirmation, layout, message);
 
   /** postMessage is scoped by origin, window identity, and an unpredictable frame channel. */
   function send() { if (!disposed) frame.contentWindow?.postMessage({ type: 'brgy-design-preview', channel, config: draft, surface }, location.origin); }

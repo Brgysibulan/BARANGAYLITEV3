@@ -209,6 +209,9 @@ small,.muted { color:var(--muted); }
 .preview-canvas[data-device=mobile] .preview-frame { width:390px; max-width:none; }
 .preview-caption { display:flex; justify-content:space-between; gap:1rem; font-size:.7rem; padding:.65rem 1rem; background:#fff; color:#59645f; }
 .studio-message { font-size:.8rem; margin-top:1rem; }
+.studio-editing-note { margin-bottom:1.4rem; display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+.studio-editing-note p { font-size:.8rem; margin:0; flex:1 1 260px; }
+.studio-editing-note a { font-size:.78rem; }
 .studio-actions { display:flex; gap:.5rem; flex-wrap:wrap; }
 .studio-actions button { font-size:.8rem; }
 .confirmation { border:1px solid #b39b63; background:#fff8e6; padding:1rem; border-radius:8px; margin-bottom:1rem; }
@@ -328,6 +331,15 @@ input[type=checkbox] { width:22px; height:22px; min-height:22px; accent-color:va
 .menu-toggle { display:none; }
 
 /* 08. Public covers and verification; unrelated design controls cannot recolor printed QR codes. */
+.maintenance-control { margin-bottom:1.5rem; border-top:4px solid var(--accent); }
+.maintenance-control h2 { font-size:1.5rem; margin:1rem 0; }
+.maintenance-surface { display:grid; place-items:center; min-height:85vh; padding:clamp(1rem,5vw,4rem); background:var(--canvas); }
+.maintenance-card { width:min(100%,720px); padding:clamp(1.3rem,4vw,3rem); background:var(--paper); border:1px solid var(--line); border-top:5px solid var(--primary); border-radius:var(--radius); }
+.maintenance-card .brand { margin-bottom:2.5rem; }
+.maintenance-card h1 { font-size:clamp(2rem,5vw,3.2rem); }
+.maintenance-message { white-space:pre-line; overflow-wrap:anywhere; }
+.edit-dialog .maintenance-surface { min-height:0; padding:0; }
+.maintenance-control .cluster { margin-top:1.2rem; }
 .cover-slideshow { position:relative; margin-top:2rem; border-radius:var(--radius); overflow:hidden; background:var(--canvas); }
 .cover-slideshow > img { display:block; width:100%; height:auto; aspect-ratio:16/7; object-fit:cover; }
 .cover-caption { position:absolute; bottom:66px; left:0; margin:0; padding:.7rem 1.3rem; color:#fff; background:#102e29d9; max-width:100%; font-size:.9rem; }

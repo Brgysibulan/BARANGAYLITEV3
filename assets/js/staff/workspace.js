@@ -26,7 +26,8 @@ export async function startWorkspace(workspace) {
     stopRouter?.(); currentCleanup?.(); nav.hidden = true; signout.hidden = true;
     identity.textContent = 'Staff access required'; view.replaceChildren();
     status.textContent = message;
-    view.append(el('a', 'Sign in with your existing account →', { href: '../login.html', class: 'button primary' }));
+    // Login accepts only fixed, role-appropriate module names; it never redirects to external URLs.
+    view.append(el('a', 'Sign in with your existing account →', { href: '../login.html?next=' + encodeURIComponent(location.hash.slice(1)), class: 'button primary' }));
   }
   try {
     services = getServices();
@@ -35,7 +36,7 @@ export async function startWorkspace(workspace) {
     identity.textContent = staff.profile.display_name || staff.user.email;
     signout.hidden = false;
     const routes = [['dashboard', 'Overview', '◫'], ...Object.entries(CONTENT).map(([key, def], i) => [key, def.label, ['▤', '◇', '♙', '☷', '▧', '⇩', '▣', '▥'][i]])];
-    if (isAdmin) routes.push(['verification', 'ID records & QR', '▦'], ['covers', 'Cover photos', '▣'], ['design-studio', 'Design Studio', '◈'], ['settings', 'Site settings', '⚙'], ['editors', 'Content Admins', '♙'], ['usage', 'System status & usage', '◷']);
+    if (isAdmin) routes.push(['verification', 'ID records & QR', '▦'], ['covers', 'Cover photos', '▣'], ['design-studio', 'Design Studio', '◈'], ['settings', 'Page settings', '⚙'], ['editors', 'Content Admins', '♙'], ['usage', 'System status & usage', '◷']);
     nav.replaceChildren();
     const navBrand = el('div', '', { class: 'nav-brand' }); navBrand.append(el('span', 'B', { class: 'nav-mark', 'aria-hidden': 'true' }), el('strong', 'Barangay workspace'), el('small', isAdmin ? 'SYSTEM ADMIN' : 'CONTENT ADMIN')); nav.append(navBrand);
     const list = el('ul');

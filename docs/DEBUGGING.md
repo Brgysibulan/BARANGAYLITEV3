@@ -1,5 +1,20 @@
 # Troubleshooting guide
 
+## Page Settings and maintenance
+
+The standalone `design-studio.html` and its iframe are a sample appearance preview, not live staff editing. Use **Open live Page Settings** or sign in at `login.html?next=settings`. The existing active System Admin account can edit `admin/index.html#settings`. Content Admins still cannot change system settings; the live profile and existing RLS enforce this.
+
+- `core/navigation.js` preserves only allowlisted, role-appropriate destinations after login, never arbitrary URLs.
+- `staff/settings-screen.js` has separate confirmed **Enable/Disable maintenance mode**, **Edit maintenance notice**, and write-free **Preview maintenance notice** controls. A toggle updates only `maintenance_mode`; blank notice text cannot block turning maintenance off.
+- `public/availability.js` reads existing settings on entry, focus/visibility, and once per minute while visible. Public navigation, pagination, and ID lookup also recheck availability. Concurrent reads are deduplicated; ordinary polls do not reload content tables.
+- `public/app.js` disposes its router and carousel on maintenance or a failed availability check. Late content/theme responses cannot restore the public view. Turning maintenance off restores the current public route.
+- `public/verify.js` removes verification controls, stops camera tracks, and discards pending results when availability changes. A direct QR link does not make a verification request while maintenance is on.
+- Login and staff workspaces are not gated by maintenance. Back/Forward-cache restores of public pages recheck availability.
+
+This preserves the original website-level maintenance contract. It is not a new security boundary: existing database RLS, public file links, and already-downloaded copies remain unchanged. No database schema, RPC, policy, account, or live maintenance value is changed by deployment or automated tests.
+
+`tests/maintenance.test.js` covers real controller/form paths with fake services, including editing, confirmation, denied saves, maintenance transitions, and late-response/scanner cleanup. These tests do not prove a real authenticated save or physical camera behavior.
+
 ## Staff editing / ID / cover update
 
 - `staff/content-screen.js`: content/ID table, search, pagination, edit dialogs and confirmed record deletion.

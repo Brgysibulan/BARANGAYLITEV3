@@ -16,6 +16,8 @@ All CSS lives in `assets/css/design-system.css`, in numbered sections: tokens, P
 
 The public `design-studio.html` is a separate safe playground. Publishing is disabled there; it contains labelled sample data only. `preview.html` has no Supabase SDK and cannot submit login/application/activation forms. Origin, source-window, and random-channel checks isolate preview messages.
 
+The staff navigation inside that iframe is also a sample. Use **Open live Page Settings** outside the preview to edit real homepage text/contact information or manage maintenance. The link opens the authenticated System Admin settings route and preserves that destination through login; it does not grant new permissions.
+
 ## Color controls and English interface
 
 - **Main color** controls primary buttons and primary highlights.

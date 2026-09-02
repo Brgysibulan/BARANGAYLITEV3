@@ -10,9 +10,10 @@ import { startRouter } from '../core/router.js';
 import { watchDesign } from '../design/runtime.js';
 import { presetDesign } from '../design/model.js';
 import { publicHome, publicHeader, publicFooter, contentCard, SECTIONS } from '../design/public-renderer.js';
+import { watchAvailability, maintenanceSurface } from './availability.js';
 
 /** Maintenance and published flags stay authoritative regardless of the selected theme. */
-async function start() {
+export async function startPublicPage({ services: injectedServices } = {}) {
   const root = document.querySelector('#public-root');
   const status = document.querySelector('#status');
   let config = presetDesign();
@@ -21,29 +22,24 @@ async function start() {
   let currentRoute;
   let homeErrors = {};
   let covers = [], homeCleanup;
+  let stopAvailability, stopRouter, stopDesign, disposed = false;
   const showHome = () => { homeCleanup?.(); const home = publicHome(settings, homeData, config, { errors: homeErrors, covers }); root.replaceChildren(home); homeCleanup = home.dispose; };
+  const cleanup = () => { disposed = true; stopAvailability?.(); stopRouter?.(); stopDesign?.(); homeCleanup?.(); };
+  window.addEventListener('pagehide', cleanup, { once: true });
   try {
-    const services = getServices();
-    settings = await services.settings.read();
-    const stopDesign = await watchDesign(services.design, (next, error) => {
-      if (next) config = next;
-      if (error) status.textContent = 'Design unavailable. Showing default appearance; existing content is unchanged.';
-      if (currentRoute === 'home' && homeData) showHome();
-    });
-    window.addEventListener('pagehide', stopDesign, { once: true });
-    if (settings.maintenance_mode) {
-      const main = el('main', '', { class: 'container page-content' });
-      main.append(el('h1', settings.maintenance_title || 'Under maintenance', { class: 'page-heading' }), el('p', settings.maintenance_message || 'Please check back later.'), el('a', 'Staff login', { href: 'login.html', class: 'button' }));
-      root.replaceChildren(main); status.textContent = ''; return;
-    }
+    const services = injectedServices || getServices();
     document.querySelector('.skip-link')?.addEventListener('click', event => { event.preventDefault(); document.querySelector('#public-main')?.focus(); });
-    startRouter(async (route, isCurrent) => {
+    const openPublic = () => { stopRouter = startRouter(async (route, isCurrent) => {
+      // Each public navigation checks availability before requesting any content rows.
+      const latest = await stopAvailability.refresh();
+      if (!isCurrent() || !latest || latest.maintenance_mode) return;
       homeCleanup?.(); homeCleanup = undefined;
       currentRoute = route; status.textContent = 'Loading published information…';
       try {
         if (route === 'home') {
           try { const saved = await services.covers.read(); if (!isCurrent()) return; covers = saved.slides; }
           catch { covers = []; }
+          if (!isCurrent()) return;
           const results = await Promise.all(Object.keys(CONTENT).map(async table => {
             try { return { table, data: await services.content.list(table, { publicOnly: true, pageSize: 3 }) }; }
             catch { return { table, error: true }; }
@@ -71,6 +67,11 @@ async function start() {
           const load = async () => {
             more.disabled = true;
             try {
+              // The route already checked its first page; subsequent loads recheck explicitly.
+              if (page > 0) {
+                const currentSettings = await stopAvailability.refresh();
+                if (!isCurrent() || !currentSettings || currentSettings.maintenance_mode) return;
+              }
               const data = await services.content.list(route, { publicOnly: true, page, search: route === 'services' ? query : '' });
               if (!isCurrent()) return;
               data.rows.forEach(row => cards.append(contentCard(route, row)));
@@ -82,17 +83,45 @@ async function start() {
           await load();
         }
         if (isCurrent()) { document.title = (route === 'home' ? 'Home' : CONTENT[route].label) + ' — Barangay ' + settings.barangay_name; status.textContent = ''; }
-        if (route === 'home') return () => { homeCleanup?.(); homeCleanup = undefined; };
+        if (route === 'home') {
+          const ownedCleanup = homeCleanup;
+          return () => { ownedCleanup?.(); if (homeCleanup === ownedCleanup) homeCleanup = undefined; };
+        }
       } catch (error) {
         if (!isCurrent()) return;
         status.textContent = error.message;
         if (!Object.hasOwn(CONTENT, route) && route !== 'home') root.replaceChildren(publicHeader(settings), el('p', error.message, { class: 'container notice' }));
       }
-    }, 'home');
+    }, 'home'); };
+    stopAvailability = watchAvailability(services.settings, (next, error) => {
+      // Stopping the router invalidates in-flight content responses before hiding the old view.
+      stopRouter?.(); stopRouter = undefined; homeCleanup?.(); homeCleanup = undefined;
+      currentRoute = undefined; homeData = null; settings = next; root.replaceChildren(); status.textContent = '';
+      if (!next || next.maintenance_mode) {
+        root.replaceChildren(maintenanceSurface(next || {}, { error, retry: () => stopAvailability.refresh() }));
+        document.title = next ? 'Maintenance — Barangay ' + next.barangay_name : 'Website temporarily unavailable';
+      } else openPublic();
+    });
+    await stopAvailability.refresh();
+    if (disposed) return;
+    stopDesign = await watchDesign(services.design, (next, error) => {
+      if (disposed) return;
+      if (next) config = next;
+      if (error) status.textContent = 'Design unavailable. Showing default appearance; existing content is unchanged.';
+      // A late theme response must never put public content back over a maintenance notice.
+      if (settings?.maintenance_mode === false && currentRoute === 'home' && homeData) showHome();
+    });
+    if (disposed) stopDesign();
   } catch (error) {
+    if (disposed) return;
     status.textContent = 'Unable to load barangay information: ' + error.message;
     root.replaceChildren(el('a', 'Retry', { href: 'index.html', class: 'button' }), el('a', 'Staff login', { href: 'login.html', class: 'button' }));
   }
+  return cleanup;
 }
-if (document.readyState !== 'complete') document.addEventListener('DOMContentLoaded', start, { once: true });
-else start();
+if (typeof document !== 'undefined' && document.querySelector('#public-root')) {
+  if (document.readyState !== 'complete') document.addEventListener('DOMContentLoaded', startPublicPage, { once: true });
+  else startPublicPage();
+  // Back/Forward cache restores a stopped page: hide cached content and recheck availability.
+  window.addEventListener('pageshow', event => { if (event.persisted) { document.querySelector('#public-root').replaceChildren(); startPublicPage(); } });
+}

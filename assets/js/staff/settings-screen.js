@@ -7,42 +7,81 @@ import { element as el } from '../core/dom.js';
 import { heading, button, editorDialog, labelFor } from './ui.js';
 import { optimizeImage } from '../media/images.js';
 import { formatBytes } from '../data/usage.js';
+import { MAINTENANCE_DEFAULTS } from '../data/maintenance.js';
+import { maintenanceSurface } from '../public/availability.js';
 
 const GROUPS = [
   { title: 'Barangay identity', keys: ['barangay_name', 'municipality_city', 'province', 'logo_url'] },
   { title: 'Public homepage', keys: ['hero_title', 'hero_text'] },
   { title: 'Contact & location', keys: ['address', 'contact_number', 'email', 'facebook_url', 'map_embed_url'] },
-  { title: 'Maintenance notice', keys: ['maintenance_mode', 'maintenance_title', 'maintenance_message'] },
 ];
 /** Settings stay admin-only, reuse the singleton, and patch only edited fields. */
 export function mountSettings(root, services, isCurrent) {
-  let disposed = false, dialog;
-  heading(root, 'Site settings', 'Edit the public identity, contact information and homepage text. Existing account settings stay unchanged.');
-  const slot = el('div', '', { class: 'dashboard-grid' }); const message = el('p', '', { role: 'status' }); root.append(message, slot);
+  let disposed = false, dialog, busy = false, loadSequence = 0;
+  const active = () => !disposed && isCurrent();
+  const reload = button('Reload settings', () => load());
+  heading(root, 'Page settings', 'Edit the real public homepage, barangay identity, and contact details. Maintenance controls are separate from notice editing.', [reload, el('a', 'View public website ↗', { href: '../index.html', target: '_blank', rel: 'noopener', class: 'button' })]);
+  const availability = el('div'); const slot = el('div', '', { class: 'dashboard-grid' });
+  const message = el('p', 'Loading saved settings…', { role: 'status', 'aria-live': 'polite', class: 'module-message' }); root.append(message, availability, slot);
+  function controlsDisabled(value) { root.querySelectorAll('button').forEach(control => { control.disabled = value; }); }
+  function editGroup(group, settings) {
+    const fields = group.keys.map(key => ({ key, type: key.endsWith('_url') ? 'url' : key === 'email' ? 'email' : ['hero_text', 'address', 'maintenance_message'].includes(key) ? 'textarea' : 'text', wide: true, required: ['barangay_name', 'hero_title'].includes(key), max: key === 'maintenance_title' ? 100 : key === 'maintenance_message' ? 500 : 20000 }));
+    if (group.keys.includes('logo_url')) fields.push({ key: 'upload', label: 'Upload logo (optional)', type: 'file', accept: 'image/jpeg,image/png,image/webp', wide: true });
+    dialog = editorDialog({ title: group.title, fields, original: settings,
+      description: group.title === 'Maintenance notice' ? 'Blank notice fields use the default message. Saving this text does not enable or disable maintenance.' : '',
+      async onSave(values, file) {
+        // Existing notice columns may be NOT NULL; blank copy means the shared fallback.
+        for (const key of ['maintenance_title', 'maintenance_message']) if (Object.hasOwn(values, key) && !values[key]) values[key] = MAINTENANCE_DEFAULTS[key];
+        let uploaded;
+        if (file) { uploaded = await services.storage.upload('branding-media', await optimizeImage(file, { maxSide: 512, target: 120 * 1024 })); values.logo_url = uploaded.url; }
+        const changed = Object.fromEntries(Object.entries(values).filter(([key, value]) => value !== (settings[key] ?? null)));
+        if (!Object.keys(changed).length) return settings;
+        try { return await services.settings.update(changed); } catch (error) { if (uploaded) { error.retainedUpload = uploaded; error.message += ' Logo retained; copy its URL before retrying.'; } throw error; }
+      }, afterSave: async () => { if (active()) { message.textContent = 'Settings saved.'; await load(); } },
+    });
+  }
+  function drawMaintenance(settings) {
+    const enabled = settings.maintenance_mode === true;
+    const panel = el('section', '', { class: 'dashboard-panel maintenance-control', 'aria-label': 'Maintenance mode controls' });
+    panel.append(el('span', enabled ? 'ON · Public website paused' : 'OFF · Public website live', { class: `status-badge ${enabled ? 'warning' : 'good'}` }), el('h2', 'Maintenance mode'),
+      el('p', 'When enabled, all public website pages and ID verification show the maintenance notice. Existing staff login and workspaces remain accessible.'),
+      el('p', 'Already-open public pages recheck on focus, navigation, and at least once per minute while visible.', { class: 'muted compact' }));
+    const actions = el('div', '', { class: 'cluster' });
+    actions.append(button(enabled ? 'Disable maintenance mode' : 'Enable maintenance mode', async () => {
+      if (busy || !active()) return;
+      const next = !enabled;
+      if (!confirm(next ? 'Enable maintenance mode? Public pages and ID verification will be paused. Staff access stays available.' : 'Disable maintenance mode and reopen the public website?')) return;
+      // A toggle patches only the boolean; empty notice text can never prevent switching OFF.
+      busy = true; controlsDisabled(true); message.textContent = next ? 'Enabling maintenance…' : 'Reopening the public website…';
+      try {
+        const saved = await services.settings.update({ maintenance_mode: next });
+        if (!saved || saved.maintenance_mode !== next) throw new Error('Maintenance change was not confirmed. Reload settings before retrying.');
+        if (active()) { message.textContent = next ? 'Maintenance enabled. Staff access remains available.' : 'Maintenance disabled. The public website is live.'; await load(); }
+      } catch (error) { if (active()) message.textContent = 'Not confirmed: ' + error.message; }
+      finally { busy = false; if (active()) controlsDisabled(false); }
+    }, true), button('Edit maintenance notice', () => editGroup({ title: 'Maintenance notice', keys: ['maintenance_title', 'maintenance_message'] }, settings)), button('Preview maintenance notice', () => {
+      const preview = el('dialog', '', { class: 'edit-dialog', 'aria-label': 'Maintenance notice preview' });
+      const close = () => { preview.close(); preview.remove(); };
+      preview.append(maintenanceSurface({ ...MAINTENANCE_DEFAULTS, ...settings }, { preview: true, mainId: 'maintenance-preview' }), button('Close preview', close));
+      preview.addEventListener('cancel', event => { event.preventDefault(); close(); }); document.body.append(preview); preview.showModal(); dialog = close;
+    })); panel.append(actions); availability.replaceChildren(panel);
+  }
   async function load() {
+    const request = ++loadSequence; controlsDisabled(true);
     try {
-      const settings = await services.settings.read(); if (disposed || !isCurrent()) return; slot.replaceChildren();
+      const settings = await services.settings.read(); if (!active() || request !== loadSequence) return;
+      if (!settings || typeof settings.maintenance_mode !== 'boolean') throw new Error('Saved settings are unavailable. Please reload.');
+      drawMaintenance(settings); slot.replaceChildren();
+      if (message.textContent === 'Loading saved settings…') message.textContent = 'Live settings loaded. Use an Edit button below to make changes.';
       GROUPS.forEach(group => {
         const card = el('section', '', { class: 'dashboard-panel' }); card.append(el('h3', group.title));
         group.keys.forEach(key => { const row = el('div', '', { class: 'setting-row' }); row.append(el('small', labelFor(key)), el('p', typeof settings[key] === 'boolean' ? (settings[key] ? 'Enabled' : 'Disabled') : settings[key] || 'Not set')); card.append(row); });
-        card.append(button('Edit ' + group.title.toLowerCase(), () => {
-          const fields = group.keys.map(key => ({ key, type: key === 'maintenance_mode' ? 'checkbox' : key.endsWith('_url') ? 'url' : key === 'email' ? 'email' : ['hero_text', 'address', 'maintenance_message'].includes(key) ? 'textarea' : 'text', wide: true, required: ['barangay_name', 'hero_title', 'maintenance_title', 'maintenance_message'].includes(key) }));
-          if (group.keys.includes('logo_url')) fields.push({ key: 'upload', label: 'Upload logo (optional)', type: 'file', accept: 'image/jpeg,image/png,image/webp', wide: true });
-          dialog = editorDialog({ title: group.title, fields, original: settings,
-            async onSave(values, file) {
-              if (values.maintenance_mode === true && !settings.maintenance_mode && !confirm('Enable maintenance mode? Residents will see the maintenance notice instead of public content.')) throw new Error('Maintenance change cancelled.');
-              let uploaded;
-              if (file) { uploaded = await services.storage.upload('branding-media', await optimizeImage(file, { maxSide: 512, target: 120 * 1024 })); values.logo_url = uploaded.url; }
-              const changed = Object.fromEntries(Object.entries(values).filter(([key, value]) => value !== (settings[key] ?? null)));
-              if (!Object.keys(changed).length) return settings;
-              try { return await services.settings.update(changed); } catch (error) { if (uploaded) { error.retainedUpload = uploaded; error.message += ' Logo retained; copy its URL before retrying.'; } throw error; }
-            }, afterSave: async () => { if (!disposed && isCurrent()) { message.textContent = 'Settings saved.'; await load(); } },
-          });
-        })); slot.append(card);
+        card.append(button('Edit ' + group.title.toLowerCase(), () => editGroup(group, settings))); slot.append(card);
       });
-    } catch (error) { if (!disposed && isCurrent()) message.textContent = error.message; }
+    } catch (error) { if (active() && request === loadSequence) message.textContent = error.message; }
+    finally { if (active() && request === loadSequence && !busy) controlsDisabled(false); }
   }
-  load(); const cleanup = () => { disposed = true; dialog?.(); }; cleanup.canLeave = () => !dialog?.canLeave || dialog.canLeave(); return cleanup;
+  load(); const cleanup = () => { disposed = true; loadSequence++; dialog?.(); }; cleanup.canLeave = () => !busy && (!dialog?.canLeave || dialog.canLeave()); return cleanup;
 }
 
 /** Upload/save is explicit. Reorder and descriptions remain local until Publish covers. */

@@ -10,6 +10,7 @@ import { extractQrToken } from '../data/verification.js';
 import { fullName } from '../data/id-model.js';
 import { watchDesign } from '../design/runtime.js';
 import { publicHeader } from '../design/public-renderer.js';
+import { watchAvailability, maintenanceSurface } from './availability.js';
 
 /** Render only the fields authorized by the existing public verification RPC. */
 export function verificationResult(record) {
@@ -24,7 +25,7 @@ export function verificationResult(record) {
 }
 
 /** Scanner lifetime is tied to the page; hidden/closed pages release the camera immediately. */
-export function mountVerification(root, service) {
+export function mountVerification(root, service, { checkAvailability = async () => true } = {}) {
   let scanner, Scanner, disposed = false, generation = 0, cameraGeneration = 0;
   const manual = el('form', '', { class: 'verification-form' });
   const number = el('input', '', { id: 'id-number', name: 'control_number', required: '', minlength: 4, maxlength: 40, pattern: '[A-Za-z0-9-]+', autocomplete: 'off', placeholder: 'Enter the printed ID number' });
@@ -44,8 +45,13 @@ export function mountVerification(root, service) {
   function stopCamera() { cameraGeneration++; scanner?.destroy(); scanner = undefined; video.srcObject?.getTracks().forEach(track => track.stop()); video.srcObject = null; video.hidden = true; start.disabled = false; stop.disabled = true; scanStatus.textContent = 'Camera is off.'; }
   async function getScanner() { if (!Scanner) Scanner = (await import('../../vendor/qr-scanner.min.js')).default; return Scanner; }
   async function lookup(operation) {
+    if (disposed) return;
     const request = ++generation; stopCamera(); result.replaceChildren(el('p', 'Checking the existing ID record…', { class: 'notice' })); submit.disabled = true;
-    try { const record = await operation(); if (!disposed && request === generation) result.replaceChildren(verificationResult(record)); }
+    try {
+      // A maintenance change disposes this form before any new public lookup is sent.
+      if (!await checkAvailability() || disposed || request !== generation) return;
+      const record = await operation(); if (!disposed && request === generation) result.replaceChildren(verificationResult(record));
+    }
     catch (error) { if (!disposed && request === generation) result.replaceChildren(el('p', 'Verification unavailable: ' + error.message, { class: 'notice' })); }
     finally { if (!disposed && request === generation) submit.disabled = false; }
   }
@@ -54,6 +60,7 @@ export function mountVerification(root, service) {
   start.addEventListener('click', async () => {
     const attempt = ++cameraGeneration; start.disabled = true; stop.disabled = false; scanStatus.textContent = 'Starting camera…';
     try {
+      if (!await checkAvailability() || disposed || attempt !== cameraGeneration) return;
       const QrScanner = await getScanner(); if (disposed || attempt !== cameraGeneration) return;
       video.hidden = false;
       scanner = new QrScanner(video, data => { if (!disposed) scanned(data.data); }, { preferredCamera: 'environment', returnDetailedScanResult: true, maxScansPerSecond: 5 });
@@ -74,20 +81,32 @@ export function mountVerification(root, service) {
   const cleanup = () => { disposed = true; generation++; stopCamera(); document.removeEventListener('visibilitychange', visibility); };
   cleanup.verifyToken = value => lookup(() => service.verifyQr(value)); return cleanup;
 }
-async function startPage() {
+/** Mount the live page behind availability checks; injected services are used only by tests. */
+export async function startVerificationPage({ services: injectedServices } = {}) {
   const root = document.querySelector('#verify-root'), status = document.querySelector('#status');
+  let stopAvailability, stopDesign, currentCleanup, disposed = false;
+  const cleanup = () => { disposed = true; stopAvailability?.(); stopDesign?.(); currentCleanup?.(); };
+  window.addEventListener('pagehide', cleanup, { once: true });
   try {
-    const services = getServices(), settings = await services.settings.read();
-    const stopDesign = await watchDesign(services.design);
-    const header = publicHeader(settings, 'verify'); header.querySelectorAll('a[href^="#"]').forEach(link => { link.href = 'index.html' + link.getAttribute('href'); }); root.append(header);
-    const main = el('main', '', { id: 'verification-main', tabindex: '-1', class: 'container verify-main' }); root.append(main);
-    if (settings.maintenance_mode) { main.append(el('h1', settings.maintenance_title), el('p', settings.maintenance_message)); status.textContent = ''; return; }
-    main.append(el('p', 'BARANGAY SIBULAN · RECORD VERIFICATION', { class: 'eyebrow muted' }), el('h1', 'Verify a barangay ID'), el('p', 'Check the name, acquisition date, expiration date and current status.', { class: 'muted' }));
-    const cleanup = mountVerification(main, services.verification); status.textContent = '';
-    window.addEventListener('pagehide', () => { cleanup(); stopDesign(); }, { once: true });
-    const token = new URLSearchParams(location.search).get('qr'); if (token) cleanup.verifyToken(token);
-  } catch (error) { status.textContent = 'Unable to load verification: ' + error.message; }
+    const services = injectedServices || getServices();
+    stopAvailability = watchAvailability(services.settings, (settings, error) => {
+      // Dispose stops the camera and invalidates any outstanding verification result.
+      currentCleanup?.(); currentCleanup = undefined; root.replaceChildren(); status.textContent = '';
+      if (!settings || settings.maintenance_mode) {
+        root.append(maintenanceSurface(settings || {}, { error, mainId: 'verification-main', retry: () => stopAvailability.refresh() })); return;
+      }
+      const header = publicHeader(settings, 'verify'); header.querySelectorAll('a[href^="#"]').forEach(link => { link.href = 'index.html' + link.getAttribute('href'); }); root.append(header);
+      const main = el('main', '', { id: 'verification-main', tabindex: '-1', class: 'container verify-main' }); root.append(main);
+      main.append(el('p', 'BARANGAY SIBULAN · RECORD VERIFICATION', { class: 'eyebrow muted' }), el('h1', 'Verify a barangay ID'), el('p', 'Check the name, acquisition date, expiration date and current status.', { class: 'muted' }));
+      currentCleanup = mountVerification(main, services.verification, { checkAvailability: async () => { const latest = await stopAvailability.refresh(); return latest?.maintenance_mode === false; } });
+      const token = new URLSearchParams(location.search).get('qr'); if (token) currentCleanup.verifyToken(token);
+    });
+    await stopAvailability.refresh(); if (disposed) return;
+    stopDesign = await watchDesign(services.design); if (disposed) stopDesign();
+  } catch (error) { if (!disposed) status.textContent = 'Unable to load verification: ' + error.message; }
+  return cleanup;
 }
 if (typeof document !== 'undefined' && document.querySelector('#verify-root')) {
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startPage, { once: true }); else startPage();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startVerificationPage, { once: true }); else startVerificationPage();
+  window.addEventListener('pageshow', event => { if (event.persisted) { document.querySelector('#verify-root').replaceChildren(); startVerificationPage(); } });
 }

@@ -8,6 +8,8 @@ The redesigned staff workspace now supports editable public content, real dashbo
 
 Design Studio includes main, secondary, and accent color pickers with matching hex inputs. The secondary color controls supporting panels while preserving older saved palettes. The authored interface is fully English; stored barangay content is not translated or modified.
 
+Live Page Settings is `admin/index.html#settings` (existing System Admin access required), not the sample Design Studio iframe. Maintenance has dedicated enable/disable, notice editing, and preview controls. The existing flag pauses public pages and ID verification, including open tabs after the next availability check, while keeping staff login/workspaces accessible. No backend permissions or live maintenance state are changed by this release.
+
 Public verification is at `verify.html`. Manual lookup requires ID number plus last name, as in the original website. QR codes use the existing record token and the permanent GitHub Pages address. No new backend/schema/RLS changes were deployed for this update. Billing, quota, bandwidth and database disk size are explicitly unavailable until a separately authorized provider integration exists.
 
 Writes run only after an explicit staff action. The application/activation screens reuse existing eligibility and role guards. All CSS remains in the central design system. Pinned local QR assets can be refreshed with `npm run vendor`; no external QR generation service receives ID tokens. See [Design Studio documentation](docs/DESIGN-STUDIO.md) and [debugging map](docs/DEBUGGING.md).

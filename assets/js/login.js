@@ -7,6 +7,7 @@ import { getServices } from './core/services.js';
 import { accessSurface } from './design/access-renderer.js';
 import { watchDesign } from './design/runtime.js';
 import { brand } from './design/public-renderer.js';
+import { staffDestination } from './core/navigation.js';
 
 // Waiting for DOMContentLoaded also waits for the deferred SDK script.
 function start() {
@@ -22,7 +23,8 @@ function start() {
     services.settings.read().then(settings => document.querySelector('.access-aside .brand')?.replaceWith(brand(settings))).catch(() => {});
   }
   catch (error) { status.textContent = error.message; button.disabled = true; return; }
-  const destination = role => role === 'admin' ? 'admin/index.html' : 'editor/index.html';
+  const requested = new URLSearchParams(location.search).get('next');
+  const destination = role => staffDestination(role, requested);
   let submitting = false;
   // Reuse a valid V3 session, but do not race a newly submitted login form.
   auth.currentStaff().then(staff => {

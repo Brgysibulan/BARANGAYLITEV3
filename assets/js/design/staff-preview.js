@@ -13,8 +13,8 @@ export function staffPreview(mode) {
   const nav = el('nav', '', { class: 'workspace-nav', 'aria-label': `${role} preview modules` });
   const list = el('ul');
   const labels = ['Dashboard', 'Announcements', 'Services', 'Officials', 'Directory', 'Transparency', 'Forms', 'Gallery'];
-  if (mode === 'admin') labels.push('Design Studio', 'Site Settings', 'Content Admin Accounts');
-  labels.forEach((label, index) => { const li = el('li'); li.append(el('a', label, { href: '#', 'aria-current': index === 0 ? 'page' : null })); list.append(li); });
+  if (mode === 'admin') labels.push('Design Studio', 'Page Settings', 'Content Admin Accounts');
+  labels.forEach((label, index) => { const li = el('li'); li.append(el('a', label, { href: '#', 'aria-current': index === 0 ? 'page' : null, 'aria-disabled': 'true', title: 'Preview only. Use the live workspace to edit.' })); list.append(li); });
   nav.append(list);
   const main = el('main', '', { class: 'workspace-main' });
   main.append(el('p', `${role.toUpperCase()} / OVERVIEW`, { class: 'eyebrow muted' }), el('h1', 'Dashboard overview'), el('p', 'Your barangay content and priorities in one place.', { class: 'muted' }));
@@ -25,6 +25,7 @@ export function staffPreview(mode) {
   const panel = el('section', '', { class: 'dashboard-panel' }); panel.append(el('h3', 'Your working tools'));
   ['Search and edit public content', 'Compress uploaded photos', mode === 'admin' ? 'Manage ID records and download QR codes' : 'Publish approved barangay information', mode === 'admin' ? 'View storage and deployment status' : 'Review drafts before publishing'].forEach(text => panel.append(el('p', text, { class: 'activity-item' })));
   graphs.append(panel);
+  main.prepend(el('p', 'Sample preview — navigation and settings are not editable here. Use “Open live Page Settings” above the preview to make real changes.', { class: 'notice' }));
   main.append(cards, graphs, el('p', 'Preview only · Access rules and account roles do not change with a theme.', { class: 'notice' }));
   root.append(header, nav, main); return root;
 }
