@@ -20,7 +20,8 @@ async function start() {
   let homeData;
   let currentRoute;
   let homeErrors = {};
-  const showHome = () => root.replaceChildren(publicHome(settings, homeData, config, { errors: homeErrors }));
+  let covers = [], homeCleanup;
+  const showHome = () => { homeCleanup?.(); const home = publicHome(settings, homeData, config, { errors: homeErrors, covers }); root.replaceChildren(home); homeCleanup = home.dispose; };
   try {
     const services = getServices();
     settings = await services.settings.read();
@@ -37,9 +38,12 @@ async function start() {
     }
     document.querySelector('.skip-link')?.addEventListener('click', event => { event.preventDefault(); document.querySelector('#public-main')?.focus(); });
     startRouter(async (route, isCurrent) => {
+      homeCleanup?.(); homeCleanup = undefined;
       currentRoute = route; status.textContent = 'Loading published information…';
       try {
         if (route === 'home') {
+          try { const saved = await services.covers.read(); if (!isCurrent()) return; covers = saved.slides; }
+          catch { covers = []; }
           const results = await Promise.all(Object.keys(CONTENT).map(async table => {
             try { return { table, data: await services.content.list(table, { publicOnly: true, pageSize: 3 }) }; }
             catch { return { table, error: true }; }
@@ -78,6 +82,7 @@ async function start() {
           await load();
         }
         if (isCurrent()) { document.title = (route === 'home' ? 'Home' : CONTENT[route].label) + ' — Barangay ' + settings.barangay_name; status.textContent = ''; }
+        if (route === 'home') return () => { homeCleanup?.(); homeCleanup = undefined; };
       } catch (error) {
         if (!isCurrent()) return;
         status.textContent = error.message;

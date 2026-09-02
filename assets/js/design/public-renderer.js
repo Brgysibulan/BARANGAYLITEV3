@@ -5,6 +5,7 @@
  */
 import { element as el, safeLink } from '../core/dom.js';
 import { PRESETS, normalizeDesign } from './model.js';
+import { createCarousel } from '../public/carousel.js';
 export const SECTIONS = Object.freeze({ announcements: ['Latest updates', 'News & advisories'], services: ['For every resident', 'Barangay services'], officials: ['Public leadership', 'Your barangay officials'], disclosures: ['Open governance', 'Transparency & reports'], gallery_items: ['Life in our barangay', 'Community gallery'], pages: ['Our barangay', 'About & programs'], forms: ['Ready to download', 'Forms & documents'], directory_entries: ['Stay connected', 'Contact directory'] });
 
 /** All links/images are constrained to HTTPS; database HTML is displayed as text, not executed. */
@@ -32,6 +33,7 @@ export function publicHeader(settings, route = 'home') {
   const nav = el('nav', '', { class: 'public-nav', 'aria-label': 'Public information' });
   const links = el('div', '', { class: 'container' });
   [['home', 'Home'], ['services', 'Services'], ['announcements', 'Announcements'], ['officials', 'Officials'], ['disclosures', 'Transparency'], ['directory_entries', 'Contact']].forEach(([key, label]) => links.append(el('a', label, { href: `#${key}`, 'aria-current': key === route ? 'page' : null })));
+  links.append(el('a', 'Verify ID', { href: 'verify.html', 'aria-current': route === 'verify' ? 'page' : null }));
   nav.append(links); header.append(utility, masthead, nav); return header;
 }
 
@@ -85,11 +87,12 @@ export function publicFooter(settings, { preview = false } = {}) {
 }
 
 /** Layout-specific hero and DOM section order make presets genuinely different layouts. */
-export function publicHome(settings, content, config, { preview = false, errors = {} } = {}) {
+export function publicHome(settings, content, config, { preview = false, errors = {}, covers = [] } = {}) {
   const design = normalizeDesign(config);
   const root = el('div', '', { class: 'public-surface' });
   root.append(publicHeader(settings));
   const main = el('main', '', { id: 'public-main', tabindex: '-1', class: 'container' });
+  if (covers.length) { const carousel = createCarousel(covers, { autoplay: !preview }); main.append(carousel.element); root.dispose = carousel.dispose; }
   const hero = el('section', '', { class: 'hero' });
   const copy = el('div', '', { class: 'hero-copy' });
   const featured = design.preset === 'executive-civic' && (content.announcements?.find(row => row.is_featured) || content.announcements?.[0]);
@@ -108,6 +111,7 @@ export function publicHome(settings, content, config, { preview = false, errors 
   const desk = el('aside', '', { class: 'resident-desk', 'aria-label': 'Resident quick actions' });
   desk.append(el('p', 'RESIDENT QUICK LINKS', { class: 'eyebrow' }));
   [['services', 'Barangay services'], ['forms', 'Downloadable forms'], ['directory_entries', 'Contact your barangay']].forEach(([key, title]) => desk.append(el('a', `${title} ↗`, { href: `#${key}` })));
+  desk.append(el('a', 'Verify barangay ID ↗', { href: 'verify.html' }));
   hero.append(copy, desk); main.append(hero);
   const sections = el('div', '', { class: 'section-grid' });
   for (const table of PRESETS[design.preset].sectionOrder) {

@@ -8,17 +8,19 @@ import { contentContract, pickFields, validatePayload } from './contracts.js';
 
 export function createContent(client, auth) {
   /** Staff sees authorized content; publicOnly always excludes unpublished records. */
-  async function list(table, { publicOnly = false, page = 0, pageSize = 50, search = '' } = {}) {
+  async function list(table, { publicOnly = false, page = 0, pageSize = 50, search = '', visibility = 'all' } = {}) {
     const def = contentContract(table);
     if (!Number.isInteger(page) || page < 0 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100) throw new Error('Invalid pagination.');
     if (!publicOnly) await auth.requireStaff();
     let query = client.from(table).select(['id', ...def.fields].join(','), { count: 'exact' });
     // Keep the public predicate even when a staff session is present.
     if (publicOnly) query = query.eq(def.flag, true);
+    if (!['all', 'published', 'draft'].includes(visibility)) throw new Error('Invalid visibility filter.');
+    if (!publicOnly && visibility !== 'all') query = query.eq(def.flag, visibility === 'published');
     if (search) {
-      if (table !== 'services' || typeof search !== 'string' || search.length > 100) throw new Error('Service searches must be at most 100 characters.');
+      if ((publicOnly && table !== 'services') || typeof search !== 'string' || search.length > 100) throw new Error('Service searches must be at most 100 characters.');
       // Escaping LIKE wildcards keeps resident searches literal, not filter expressions.
-      query = query.ilike('name', '%' + search.replace(/[\\%_]/g, '\\$&') + '%');
+      query = query.ilike(def.title, '%' + search.replace(/[\\%_]/g, '\\$&') + '%');
     }
     const result = await query.order(def.order, { ascending: !def.descending, nullsFirst: false })
       .order('id', { ascending: true }).range(page * pageSize, (page + 1) * pageSize - 1);
@@ -32,8 +34,8 @@ export function createContent(client, auth) {
     const payload = validatePayload(pickFields(values, def.fields));
     if (!Object.keys(payload).length) throw new Error('No supported fields to save.');
     if ((id === null || Object.hasOwn(payload, def.title)) && !String(payload[def.title] || '').trim()) throw new Error(`${def.label}: a name/title is required.`);
-    if (id === null && table === 'pages' && !payload.slug?.trim()) throw new Error('A page slug is required.');
-    if (id === null && def.fileField && !payload[def.fileField]) throw new Error('An uploaded file or existing HTTPS file URL is required.');
+    if (id === null && ['pages', 'announcements'].includes(table) && !payload.slug?.trim()) throw new Error('A page slug is required.');
+    if (id === null && def.fileField && !def.optionalFile && !payload[def.fileField]) throw new Error('An uploaded file or existing HTTPS file URL is required.');
     const query = id === null ? client.from(table).insert(payload) : client.from(table).update(payload).eq('id', id);
     // single() detects denied/zero-row writes instead of reporting false success.
     return unwrap(await query.select(['id', ...def.fields].join(',')).single());
@@ -59,5 +61,20 @@ export function createContent(client, auth) {
       return { table, label: def.label, count: result.count };
     }));
   }
-  return Object.freeze({ list, save, remove, counts });
+  /** Read only small aggregates and recent titles; never download all content for a chart. */
+  async function overview() {
+    await auth.requireStaff();
+    const { CONTENT } = await import('./contracts.js');
+    return Promise.all(Object.entries(CONTENT).map(async ([table, def]) => {
+      const [total, published, recent] = await Promise.all([
+        client.from(table).select('id', { count: 'exact', head: true }),
+        client.from(table).select('id', { count: 'exact', head: true }).eq(def.flag, true),
+        client.from(table).select(`id,${def.title},${table === 'gallery_items' ? 'created_at' : 'updated_at'}`).order(table === 'gallery_items' ? 'created_at' : 'updated_at', { ascending: false }).limit(3),
+      ]);
+      return { table, label: def.label, total: total.error ? null : total.count, published: published.error ? null : published.count,
+        recent: recent.error ? [] : (recent.data || []).map(row => ({ title: row[def.title], at: row.updated_at || row.created_at, table })),
+        error: total.error?.message || published.error?.message || recent.error?.message || null };
+    }));
+  }
+  return Object.freeze({ list, save, remove, counts, overview });
 }

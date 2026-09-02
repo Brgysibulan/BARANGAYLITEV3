@@ -9,10 +9,10 @@ const define = (label, title, fields, flag, order, extra = {}) => Object.freeze(
 });
 
 export const CONTENT = Object.freeze({
-  announcements: define('Announcements', 'title', 'title,slug,excerpt,content,cover_url,published_at,is_published,is_featured', 'is_published', 'published_at', { descending: true }),
+  announcements: define('Announcements', 'title', 'title,slug,excerpt,content,cover_url,published_at,is_published,is_featured', 'is_published', 'published_at', { descending: true, bucket: 'gallery-media', fileField: 'cover_url', optionalFile: true }),
   services: define('Services', 'name', 'name,description,requirements,fee_text,processing_time,sort_order,is_active', 'is_active', 'sort_order'),
-  officials: define('Officials', 'full_name', 'full_name,position,photo_url,bio,sort_order,is_active', 'is_active', 'sort_order'),
-  directory_entries: define('Directory', 'name', 'category,name,role_title,contact,location,photo_url,sort_order,is_active', 'is_active', 'sort_order'),
+  officials: define('Officials', 'full_name', 'full_name,position,photo_url,bio,sort_order,is_active', 'is_active', 'sort_order', { bucket: 'gallery-media', fileField: 'photo_url', optionalFile: true }),
+  directory_entries: define('Directory', 'name', 'category,name,role_title,contact,location,photo_url,sort_order,is_active', 'is_active', 'sort_order', { bucket: 'gallery-media', fileField: 'photo_url', optionalFile: true }),
   disclosures: define('Disclosures', 'title', 'title,category,description,file_url,document_date,is_published,sort_order', 'is_published', 'sort_order', { bucket: 'disclosure-documents', fileField: 'file_url' }),
   forms: define('Downloadable Forms', 'name', 'name,category,description,file_url,file_name,file_type,file_size,is_published,sort_order', 'is_published', 'sort_order', { bucket: 'forms', fileField: 'file_url' }),
   gallery_items: define('Gallery', 'title', 'title,caption,image_url,album,sort_order,is_published', 'is_published', 'sort_order', { bucket: 'gallery-media', fileField: 'image_url' }),

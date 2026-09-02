@@ -12,6 +12,8 @@ import { createStorage } from '../data/storage.js';
 import { createEditors } from '../data/editors.js';
 import { createApplications } from '../data/applications.js';
 import { createDesign } from '../data/design.js';
+import { createCovers } from '../data/covers.js';
+import { createUsage } from '../data/usage.js';
 
 /** Dependency injection keeps tests away from production accounts and records. */
 export function createServices(client) {
@@ -25,6 +27,8 @@ export function createServices(client) {
     editors: createEditors(client, auth),
     applications: createApplications(client, auth),
     design: createDesign(client, auth),
+    covers: createCovers(client, auth),
+    usage: createUsage(client, auth),
   });
 }
 /** Browser entry point: service wrappers share the single configured client. */

@@ -4,6 +4,7 @@
  * Debug: counts are omitted; navigation cannot grant access in this isolated preview.
  */
 import { element as el } from '../core/dom.js';
+import { metric, barChart } from '../staff/ui.js';
 export function staffPreview(mode) {
   const root = el('div', '', { class: 'workspace' });
   const role = mode === 'admin' ? 'System Admin' : 'Content Admin';
@@ -16,9 +17,14 @@ export function staffPreview(mode) {
   labels.forEach((label, index) => { const li = el('li'); li.append(el('a', label, { href: '#', 'aria-current': index === 0 ? 'page' : null })); list.append(li); });
   nav.append(list);
   const main = el('main', '', { class: 'workspace-main' });
-  main.append(el('p', `${role.toUpperCase()} / OVERVIEW`, { class: 'eyebrow muted' }), el('h1', 'Your barangay workspace'), el('p', 'Manage public information with one consistent design.', { class: 'muted' }));
-  const cards = el('div', '', { class: 'cards' });
-  ['Announcements', 'Barangay services', 'Public documents'].forEach(label => { const card = el('article', '', { class: 'content-card' }); card.append(el('p', 'CONTENT MODULE', { class: 'eyebrow' }), el('h2', label), el('p', 'Existing records appear after staff sign-in. This preview contains no private data.')); cards.append(card); });
-  main.append(cards, el('p', 'Preview only · Access rules and account roles do not change with a theme.', { class: 'notice' }));
+  main.append(el('p', `${role.toUpperCase()} / OVERVIEW`, { class: 'eyebrow muted' }), el('h1', 'Dashboard overview'), el('p', 'Your barangay content and priorities in one place.', { class: 'muted' }));
+  const cards = el('div', '', { class: 'metric-grid' });
+  cards.append(metric('Published content', '—', 'Actual totals after sign-in', 'highlight'), metric('Drafts & hidden', '—', 'Ready for review'), metric('Content modules', '8', 'Connected public modules'), metric(mode === 'admin' ? 'Registered IDs' : 'Recent updates', '—', 'Existing records only'));
+  const graphs = el('div', '', { class: 'dashboard-grid' });
+  graphs.append(barChart('Public content by module', [{ label: 'Announcements', value: 12 }, { label: 'Services', value: 8 }, { label: 'Forms', value: 6 }, { label: 'Gallery', value: 4 }], 'Sample chart for design preview only. These are not live counts.'));
+  const panel = el('section', '', { class: 'dashboard-panel' }); panel.append(el('h3', 'Your working tools'));
+  ['Search and edit public content', 'Compress uploaded photos', mode === 'admin' ? 'Manage ID records and download QR codes' : 'Publish approved barangay information', mode === 'admin' ? 'View storage and deployment status' : 'Review drafts before publishing'].forEach(text => panel.append(el('p', text, { class: 'activity-item' })));
+  graphs.append(panel);
+  main.append(cards, graphs, el('p', 'Preview only · Access rules and account roles do not change with a theme.', { class: 'notice' }));
   root.append(header, nav, main); return root;
 }

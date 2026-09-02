@@ -2,7 +2,7 @@
 
 ## Automated and read-only checks
 
-- 42 automated tests pass: existing account/data contracts, all five preset definitions, unsafe style input, fresh reset defaults, sampled text contrast, namespace preservation, admin-only writes, NULL/equality baseline filters, conflict/error responses, and published service-name searches.
+- 53 automated tests pass: existing account/data contracts, all five preset definitions, unsafe style input, fresh reset defaults, sampled text contrast, namespace preservation, admin-only writes, NULL/equality baseline filters, conflict/error responses, search, cover validation/concurrency, typed edit forms, unchanged ID rules, missing usage, XSS-safe rendering and independent QR decode round-trip.
 - Static validation passes: JavaScript syntax, module paths, debugging headers, all HTML script references, exactly one central stylesheet per shell, and no DOM/presentation side effects in data/auth services.
 - Live read-only checks pass for the existing settings/theme fields, baseline filter, all eight public content modules, private-table anonymous restrictions, and pinned Supabase SDK.
 - Read-only account verification still finds the existing two Auth users and one active System Admin. The live design field remains unchanged (NULL).

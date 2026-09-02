@@ -5,9 +5,16 @@
   "type": "module",
   "description": "Existing BRGYWEB-LITE Supabase logic, separated from legacy presentation.",
   "scripts": {
+    "vendor": "node scripts/vendor.mjs",
     "test": "node --test tests/*.test.js",
     "check": "node scripts/check.mjs",
     "dev": "node scripts/serve.mjs",
     "verify:live": "node scripts/verify-live.mjs"
+  },
+  "devDependencies": {
+    "jsqr": "1.4.0",
+    "linkedom": "0.18.12",
+    "qr-scanner": "1.4.2",
+    "qrcode-generator": "1.4.4"
   }
 }

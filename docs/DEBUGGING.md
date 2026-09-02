@@ -1,5 +1,16 @@
 # Saan titingin kapag may problema
 
+## Staff editing / ID / cover update
+
+- `staff/content-screen.js`: content/ID table, search, pagination, edit dialogs and confirmed record deletion.
+- `staff/settings-screen.js`: singleton settings and five-cover draft/publish flow. Photos are compressed in `media/images.js` before upload.
+- `staff/dashboard.js`: current counts and recent stored updates. Missing counts are not silently treated as zero.
+- `staff/qr.js`: local PNG generation; existing tokens are preserved. `public/verify.js` uses the original manual and QR RPCs.
+- `data/covers.js`: up to five public slides in `design_theme.brgyweblitev3_covers`. Atomic JSON comparison prevents a cover save from overwriting a concurrent theme edit.
+- `data/usage.js`: existing Storage metadata and public GitHub REST metadata only. No secret key or privileged backend was added.
+
+When a create/save request fails after upload, close and refresh before retrying to avoid duplicates. Uploaded files are retained when a save outcome is uncertain. Existing files are not automatically deleted because they may have other references. Billing/quota/bandwidth/database size are deliberately unavailable, not zero.
+
 Para sa CSS, five-layout presets, preview, at safe publishing, basahin ang [Design Studio guide](DESIGN-STUDIO.md). Iisa lang ang stylesheet: `assets/css/design-system.css`. Ang bago o binagong code ay may Purpose/dependencies/Debug comments.
 
 May `Purpose`, dependencies, at `Debug` notes sa simula ng bawat JavaScript module. May comments din sa safeguards at request flow. Huwag burahin ang safeguard para lamang mawala ang error; hanapin muna kung saan talaga pumalya ang request.

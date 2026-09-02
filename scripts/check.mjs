@@ -25,7 +25,7 @@ for (const file of files) {
     const source = await readFile(file, 'utf8');
     // Preserve the owner's rule: every code module explains its role and debugging entry point.
     const header = source.match(/^\/\*\*[\s\S]*?\*\//)?.[0] || '';
-    if (!header.includes('Purpose:') || !header.includes('Debug:')) throw new Error(`Missing maintenance/debugging header: ${file}`);
+    if (!file.includes(`${path.sep}vendor${path.sep}`) && (!header.includes('Purpose:') || !header.includes('Debug:'))) throw new Error(`Missing maintenance/debugging header: ${file}`);
     for (const match of source.matchAll(/(?:from\s+|import\s*\()['"](\.[^'"]+)['"]/g)) await access(path.resolve(path.dirname(file), match[1]));
   }
   if (file.endsWith('.html')) {
