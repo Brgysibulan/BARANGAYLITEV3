@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="fil">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="BRGYWEBLITEV3: existing barangay data connection, without the old design layers.">
+  <meta name="robots" content="noindex,nofollow">
+  <title>BRGYWEBLITEV3 — Data Connection</title>
+</head>
+<body>
+  <!-- Public shell. Routes and published-data reads: assets/js/public/app.js. -->
+  <!-- This is the unstyled connection-check stage, not the final public website design. -->
+  <header>
+    <h1 id="site-name">BRGYWEBLITEV3</h1>
+    <p>Data-connection preview. Wala pa ang bagong website design.</p>
+    <a href="login.html">Existing Staff Login</a>
+  </header>
+  <nav id="navigation" aria-label="Public information"></nav>
+  <main>
+    <p id="status" role="status" aria-live="polite">Loading barangay information…</p>
+    <section id="view" aria-label="Barangay information"></section>
+  </main>
+  <noscript>Enable JavaScript to view current barangay information.</noscript>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.js" defer></script>
+  <script type="module" src="assets/js/public/app.js"></script>
+</body>
+</html>

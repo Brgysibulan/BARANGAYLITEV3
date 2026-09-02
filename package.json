@@ -1,0 +1,13 @@
+{
+  "name": "barangaylitev3",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Existing BRGYWEB-LITE Supabase logic, separated from legacy presentation.",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "check": "node scripts/check.mjs",
+    "dev": "node scripts/serve.mjs",
+    "verify:live": "node scripts/verify-live.mjs"
+  }
+}

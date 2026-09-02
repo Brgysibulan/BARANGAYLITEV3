@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="fil">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Existing Staff Login — BRGYWEBLITEV3</title>
+</head>
+<body>
+  <!-- Existing-account login only. Field handlers: assets/js/login.js; auth rules: core/auth.js. -->
+  <main>
+    <a href="index.html">Public website</a>
+    <h1>BRGYWEBLITEV3 Staff Login</h1>
+    <p>Gamitin ang dati mong BRGYWEB-LITE email at password. Walang bagong System Admin account na kailangang gawin.</p>
+    <p>Connection-check version ito. Wala pang bagong design at read-only pa ang workspace.</p>
+    <form id="login-form">
+      <p><label for="email">Email</label><br><input id="email" name="email" type="email" autocomplete="username" required></p>
+      <p><label for="password">Password</label><br><input id="password" name="password" type="password" autocomplete="current-password" required></p>
+      <button type="submit">Sign in</button>
+    </form>
+    <p id="status" role="status" aria-live="polite"></p>
+  </main>
+  <noscript>Enable JavaScript to sign in.</noscript>
+  <!-- Never add passwords or privileged keys here; users enter their own existing credentials. -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.js" defer></script>
+  <script type="module" src="assets/js/login.js"></script>
+</body>
+</html>
