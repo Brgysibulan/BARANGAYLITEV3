@@ -13,25 +13,27 @@ export function createEditors(client, auth) {
     if (data?.error) throw new Error(data.error);
     return data || {};
   }
-  /** Invitation links must remain on this HTTPS site; its Auth allowlist is checked separately. */
+
+  /** Invitation links used by approved applications must remain on this HTTPS site. */
   function redirect(value) {
     const url = new URL(value);
     if (url.protocol !== 'https:') throw new Error('Activation redirects must use HTTPS.');
     if (typeof location !== 'undefined' && url.origin !== location.origin) throw new Error('Use a same-site activation URL.');
     return url.href;
   }
-  /** Reject invalid IDs before an approval/rejection request reaches the backend. */
+
+  /** Reject invalid IDs before an application request reaches the backend. */
   function applicationId(value) {
     const id = Number(value);
     if (!Number.isSafeInteger(id) || id <= 0) throw new Error('Invalid application ID.');
     return id;
   }
-  // Keep the deployed action names exact. Changing them would break existing workflows.
+
   return Object.freeze({
     list: () => call({ action: 'list' }),
-    invite: ({ email, displayName, redirectTo }) => call({ action: 'invite', email: email.trim(), display_name: displayName.trim(), redirect_to: redirect(redirectTo) }),
     approve: (id, redirectTo) => call({ action: 'approve_application', application_id: applicationId(id), redirect_to: redirect(redirectTo) }),
     reject: (id, note = '') => call({ action: 'reject_application', application_id: applicationId(id), decision_note: note }),
+    deleteApplication: id => call({ action: 'delete_application', application_id: applicationId(id) }),
     setActive: (userId, active) => {
       if (typeof active !== 'boolean' || !userId) throw new Error('A user and explicit active status are required.');
       return call({ action: 'set_active', user_id: userId, is_active: active });
