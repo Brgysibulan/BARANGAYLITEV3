@@ -1,14 +1,16 @@
 /**
- * Purpose: shared, read-only connection screens for System Admin and Content Admin.
+ * Purpose: shared staff data screens and admin-only Design Studio publishing.
  * Depends on: shell element IDs, router.js, DOM helpers, and the data service modules.
  * Debug: #status shows load errors; follow the active route to the service call below.
- * Scope: no editing/upload/account-change controls are enabled in this foundation UI.
+ * Scope: content/account lists stay read-only; only Design Studio explicitly saves appearance.
  */
 import { getServices } from '../core/services.js';
 import { getClient } from '../core/client.js';
 import { CONTENT, SETTINGS_FIELDS, VERIFICATION_FIELDS } from '../data/contracts.js';
 import { element, showRecords } from '../core/dom.js';
 import { startRouter } from '../core/router.js';
+import { applyDesign, watchDesign } from '../design/runtime.js';
+import { mountStudio } from '../design/studio.js';
 
 /** Verify access before exposing navigation or loading private records. */
 export async function startWorkspace(workspace) {
@@ -27,18 +29,22 @@ export async function startWorkspace(workspace) {
   function lock(message) {
     stopRouter?.();
     nav.hidden = true;
+    identity.textContent = 'Staff access required';
+    signout.hidden = true;
     view.replaceChildren();
     status.textContent = message;
     view.append(element('a', 'Sign in with your existing account', { href: '../login.html' }));
   }
   try {
     services = getServices();
+    const stopDesign = await watchDesign(services.design);
+    window.addEventListener('pagehide', stopDesign, { once: true });
     const staff = await services.auth.requireStaff(workspace === 'admin' ? ['admin'] : ['admin', 'editor']);
     identity.textContent = `${staff.profile.display_name || staff.user.email} · ${staff.profile.role === 'admin' ? 'System Admin' : 'Content Admin'}`;
     signout.hidden = false;
     // Shared content routes do not grant access to admin-only records/settings/actions.
     const routes = [['dashboard', 'Dashboard'], ...Object.entries(CONTENT).map(([key, def]) => [key, def.label])];
-    if (workspace === 'admin') routes.push(['verification', 'Verification Records'], ['settings', 'Site Settings'], ['editors', 'Content Admin Accounts']);
+    if (workspace === 'admin') routes.push(['design-studio', 'Design Studio'], ['verification', 'Verification Records'], ['settings', 'Site Settings'], ['editors', 'Content Admin Accounts']);
     const list = element('ul');
     routes.forEach(([key, label]) => { const item = element('li'); item.append(element('a', label, { href: `#${key}` })); list.append(item); });
     nav.append(list);
@@ -55,6 +61,7 @@ export async function startWorkspace(workspace) {
     // Every async result checks isCurrent() so old requests cannot repaint another view.
     stopRouter = startRouter(async (route, isCurrent) => {
       const item = routes.find(([key]) => key === route);
+      document.querySelector('#workspace-title').hidden = route === 'design-studio';
       view.replaceChildren();
       if (!item) { status.textContent = 'Module not found.'; return; }
       document.title = `${item[1]} — BRGYWEBLITEV3`;
@@ -67,6 +74,13 @@ export async function startWorkspace(workspace) {
         // Recheck the live profile on every navigation; no cached role grants access.
         await services.auth.requireStaff(workspace === 'admin' ? ['admin'] : ['admin', 'editor']);
         if (!isCurrent()) return;
+        if (route === 'design-studio') {
+          const snapshot = await services.design.read();
+          if (!isCurrent()) return;
+          status.textContent = '';
+          const studioRoot = element('div', '', { class: 'studio-wrap' }); view.append(studioRoot);
+          return mountStudio(studioRoot, { snapshot, service: services.design, previewUrl: '../preview.html', onPublished: applyDesign });
+        }
         view.append(element('h2', item[1]));
         view.append(element('p', 'Read-only connection check. Walang ise-save, buburahin, o papalitang data mula sa screen na ito.'));
         if (route === 'dashboard') {

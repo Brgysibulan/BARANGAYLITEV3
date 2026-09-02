@@ -1,70 +1,93 @@
 /**
- * Purpose: display existing published barangay information without legacy design code.
- * Depends on: index.html, the shared service container, router, and text-safe DOM helpers.
- * Debug: check maintenance_mode first, then the route's publish flag and field contract.
+ * Purpose: show the selected public layout using only existing published Supabase records.
+ * Depends on: service container, shared design renderers/runtime, and hash router.
+ * Debug: section failures are visible; sample data is never loaded by this entry point.
  */
 import { getServices } from '../core/services.js';
 import { CONTENT } from '../data/contracts.js';
-import { element, showRecords } from '../core/dom.js';
+import { element as el } from '../core/dom.js';
 import { startRouter } from '../core/router.js';
+import { watchDesign } from '../design/runtime.js';
+import { presetDesign } from '../design/model.js';
+import { publicHome, publicHeader, publicFooter, contentCard, SECTIONS } from '../design/public-renderer.js';
 
-/** Read site identity first; maintenance blocks public views but not staff login. */
+/** Maintenance and published flags stay authoritative regardless of the selected theme. */
 async function start() {
+  const root = document.querySelector('#public-root');
   const status = document.querySelector('#status');
-  const view = document.querySelector('#view');
-  const nav = document.querySelector('#navigation');
+  let config = presetDesign();
+  let settings;
+  let homeData;
+  let currentRoute;
+  let homeErrors = {};
+  const showHome = () => root.replaceChildren(publicHome(settings, homeData, config, { errors: homeErrors }));
   try {
     const services = getServices();
-    const settings = await services.settings.read();
-    document.querySelector('#site-name').textContent = settings.barangay_name || 'BRGYWEBLITEV3';
-    if (settings.maintenance_mode) {
-      status.textContent = settings.maintenance_title || 'Under maintenance';
-      view.append(element('p', settings.maintenance_message || 'Please check back later.'));
-      return;
-    }
-    const list = element('ul');
-    [['home', 'Home'], ...Object.entries(CONTENT).map(([key, def]) => [key, def.label])].forEach(([key, label]) => {
-      const li = element('li'); li.append(element('a', label, { href: `#${key}` })); list.append(li);
+    settings = await services.settings.read();
+    const stopDesign = await watchDesign(services.design, (next, error) => {
+      if (next) config = next;
+      if (error) status.textContent = 'Design unavailable. Showing default appearance; existing content is unchanged.';
+      if (currentRoute === 'home' && homeData) showHome();
     });
-    nav.append(list);
+    window.addEventListener('pagehide', stopDesign, { once: true });
+    if (settings.maintenance_mode) {
+      const main = el('main', '', { class: 'container page-content' });
+      main.append(el('h1', settings.maintenance_title || 'Under maintenance', { class: 'page-heading' }), el('p', settings.maintenance_message || 'Please check back later.'), el('a', 'Staff login', { href: 'login.html', class: 'button' }));
+      root.replaceChildren(main); status.textContent = ''; return;
+    }
+    document.querySelector('.skip-link')?.addEventListener('click', event => { event.preventDefault(); document.querySelector('#public-main')?.focus(); });
     startRouter(async (route, isCurrent) => {
-      view.replaceChildren();
-      status.textContent = 'Loading published information…';
+      currentRoute = route; status.textContent = 'Loading published information…';
       try {
         if (route === 'home') {
-          view.append(element('h2', settings.hero_title || settings.barangay_name));
-          view.append(element('p', settings.hero_text || ''));
-          view.append(element('p', [settings.address, settings.contact_number, settings.email].filter(Boolean).join(' · ')));
+          const results = await Promise.all(Object.keys(CONTENT).map(async table => {
+            try { return { table, data: await services.content.list(table, { publicOnly: true, pageSize: 3 }) }; }
+            catch { return { table, error: true }; }
+          }));
+          if (!isCurrent()) return;
+          homeData = {}; homeErrors = {};
+          results.forEach(({ table, data, error }) => { homeData[table] = data?.rows || []; if (error) homeErrors[table] = true; });
+          showHome();
         } else {
-          const def = CONTENT[route];
-          if (!def) throw new Error('Page not found.');
+          if (!Object.hasOwn(CONTENT, route)) throw new Error('Page not found. Choose a public information page from the navigation.');
           let page = 0;
-          const slot = element('div');
-          const summary = element('p');
-          const next = element('button', 'Load more', { type: 'button' });
-          view.append(element('h2', def.label), summary, slot, next);
-          // Load small pages only; publicOnly is required even if staff is signed in.
+          const query = new URLSearchParams(location.hash.split('?')[1] || '').get('q') || '';
+          const shell = el('div', '', { class: 'public-surface' });
+          const main = el('main', '', { id: 'public-main', tabindex: '-1', class: 'container page-content' });
+          main.append(el('h1', SECTIONS[route][1], { class: 'page-heading' }));
+          const summary = el('p', '', { role: 'status', class: 'muted' });
+          const cards = el('div', '', { class: 'cards' });
+          const more = el('button', 'Load more', { type: 'button' });
+          if (route === 'services') {
+            const search = el('form', '', { role: 'search', class: 'service-search' });
+            search.append(el('label', 'Search service names', { for: 'service-filter', class: 'sr-only' }), el('input', '', { id: 'service-filter', name: 'q', type: 'search', value: query, maxlength: 100, placeholder: 'Search service names…' }), el('button', 'Search', { type: 'submit', class: 'primary' }));
+            search.addEventListener('submit', event => { event.preventDefault(); location.hash = 'services?q=' + encodeURIComponent(search.elements.q.value.trim()); }); main.append(search);
+          }
+          main.append(summary, cards, more); shell.append(publicHeader(settings, route), main, publicFooter(settings)); root.replaceChildren(shell);
           const load = async () => {
-            next.disabled = true;
+            more.disabled = true;
             try {
-              const data = await services.content.list(route, { publicOnly: true, page });
+              const data = await services.content.list(route, { publicOnly: true, page, search: route === 'services' ? query : '' });
               if (!isCurrent()) return;
-              slot.append(showRecords(data.rows, def.fields.filter(key => key !== 'slug' && !key.startsWith('is_'))));
-              page++;
-              summary.textContent = `${data.count} published records`;
-              next.hidden = page * 50 >= data.count;
-            } finally { next.disabled = false; }
+              data.rows.forEach(row => cards.append(contentCard(route, row)));
+              if (page === 0 && !data.rows.length) cards.append(el('p', query ? 'No matching published services.' : 'No published records in this section yet.', { class: 'empty' }));
+              page++; summary.textContent = data.count + ' published ' + (query ? 'matching ' : '') + 'records'; more.hidden = page * 50 >= data.count;
+            } finally { more.disabled = false; }
           };
-          next.addEventListener('click', () => load().catch(error => { if (isCurrent()) status.textContent = error.message; }));
+          more.addEventListener('click', () => load().catch(error => { if (isCurrent()) status.textContent = 'Could not load more: ' + error.message; }));
           await load();
         }
-        if (isCurrent()) {
-          document.title = `${route === 'home' ? 'Home' : CONTENT[route].label} — ${settings.barangay_name || 'BRGYWEBLITEV3'}`;
-          status.textContent = 'Published data from the existing barangay database.';
-        }
-      } catch (error) { if (isCurrent()) status.textContent = error.message; }
+        if (isCurrent()) { document.title = (route === 'home' ? 'Home' : CONTENT[route].label) + ' — Barangay ' + settings.barangay_name; status.textContent = ''; }
+      } catch (error) {
+        if (!isCurrent()) return;
+        status.textContent = error.message;
+        if (!Object.hasOwn(CONTENT, route) && route !== 'home') root.replaceChildren(publicHeader(settings), el('p', error.message, { class: 'container notice' }));
+      }
     }, 'home');
-  } catch (error) { status.textContent = `Unable to load: ${error.message}`; }
+  } catch (error) {
+    status.textContent = 'Unable to load barangay information: ' + error.message;
+    root.replaceChildren(el('a', 'Retry', { href: 'index.html', class: 'button' }), el('a', 'Staff login', { href: 'login.html', class: 'button' }));
+  }
 }
 if (document.readyState !== 'complete') document.addEventListener('DOMContentLoaded', start, { once: true });
 else start();

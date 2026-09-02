@@ -11,6 +11,7 @@ import { createVerification } from '../data/verification.js';
 import { createStorage } from '../data/storage.js';
 import { createEditors } from '../data/editors.js';
 import { createApplications } from '../data/applications.js';
+import { createDesign } from '../data/design.js';
 
 /** Dependency injection keeps tests away from production accounts and records. */
 export function createServices(client) {
@@ -23,6 +24,7 @@ export function createServices(client) {
     storage: createStorage(client, auth, content),
     editors: createEditors(client, auth),
     applications: createApplications(client, auth),
+    design: createDesign(client, auth),
   });
 }
 /** Browser entry point: service wrappers share the single configured client. */

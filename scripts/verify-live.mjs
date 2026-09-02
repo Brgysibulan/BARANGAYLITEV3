@@ -18,6 +18,16 @@ const settings = await get(`site_settings?select=${SETTINGS_SELECT}&id=eq.1`);
 assert.equal(settings.ok, true, `site_settings HTTP ${settings.status}`);
 assert.equal(settings.data.length, 1, 'Expected existing singleton settings row');
 console.log('PASS: existing site_settings singleton readable; no theme fields requested.');
+const theme = await get('site_settings?select=id,design_theme,updated_at&id=eq.1');
+assert.equal(theme.ok, true, 'Existing design_theme column must be publicly readable');
+assert.equal(theme.data.length, 1);
+// Exercise the exact read-side comparison syntax used for atomic publishing, without PATCH.
+const rawTheme = theme.data[0].design_theme;
+const comparison = rawTheme === null ? 'is.null' : 'eq.' + encodeURIComponent(JSON.stringify(rawTheme));
+const compared = await get('site_settings?select=id&id=eq.1&design_theme=' + comparison);
+assert.equal(compared.ok, true, 'Theme baseline comparison must be supported by PostgREST');
+assert.equal(compared.data.length, 1);
+console.log('PASS: existing theme column and atomic baseline comparison readable; no theme write performed.');
 for (const [table, def] of Object.entries(CONTENT)) {
   const result = await get(`${table}?select=id,${def.fields.join(',')}&${def.flag}=eq.true&limit=1`);
   assert.equal(result.ok, true, `${table} HTTP ${result.status}`);

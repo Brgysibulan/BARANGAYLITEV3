@@ -7,7 +7,14 @@
 export function startRouter(render, fallback = 'dashboard') {
   let cleanup;
   let generation = 0;
+  let previousHash = location.hash;
   async function update() {
+    // Draft editors may veto in-app navigation/Back; sign-out still forcibly cleans up.
+    if (cleanup?.canLeave && !cleanup.canLeave()) {
+      history.replaceState(null, '', location.pathname + location.search + previousHash);
+      return;
+    }
+    previousHash = location.hash;
     // A new route invalidates old requests, so late responses cannot replace it.
     const current = ++generation;
     cleanup?.();
@@ -16,10 +23,10 @@ export function startRouter(render, fallback = 'dashboard') {
     const isCurrent = () => current === generation;
     const nextCleanup = await render(route, isCurrent);
     // An old render may finish after a newer route. Dispose only its own resources.
-    if (isCurrent()) cleanup = nextCleanup;
+    if (isCurrent()) { cleanup = nextCleanup; window.scrollTo(0, 0); }
     else nextCleanup?.();
   }
   window.addEventListener('hashchange', update);
   update();
-  return () => { generation++; cleanup?.(); window.removeEventListener('hashchange', update); };
+  return () => { generation++; cleanup?.(); cleanup = undefined; window.removeEventListener('hashchange', update); };
 }

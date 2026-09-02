@@ -5,20 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
   <title>System Admin — BRGYWEBLITEV3</title>
+  <link rel="stylesheet" href="../assets/css/design-system.css">
 </head>
-<body data-workspace="admin">
+<body data-workspace="admin" class="workspace">
   <!-- System Admin shell. Behavior: assets/js/admin/app.js -> staff/workspace.js. -->
   <!-- Navigation stays hidden until the existing account and live role are verified. -->
-  <a href="#main">Skip to content</a>
-  <header>
+  <a href="#main" class="skip-link">Skip to content</a>
+  <header class="workspace-header">
     <p>BRGYWEBLITEV3 · System Admin</p>
     <p id="identity" role="status">Verifying existing account…</p>
     <a href="../index.html">Public website</a>
     <button id="signout" type="button" hidden>Sign out</button>
   </header>
-  <nav id="navigation" aria-label="System Admin modules" hidden></nav>
-  <main id="main" tabindex="-1">
-    <h1>Existing data connection</h1>
+  <nav id="navigation" class="workspace-nav" aria-label="System Admin modules" hidden></nav>
+  <main id="main" class="workspace-main" tabindex="-1">
+    <h1 id="workspace-title">System Admin workspace</h1>
     <p id="status" role="status" aria-live="polite">Loading…</p>
     <section id="view" aria-label="Current module"></section>
   </main>

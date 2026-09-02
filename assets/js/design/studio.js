@@ -1,0 +1,143 @@
+/**
+ * Purpose: central layout, color, and typography editor with an isolated draft preview.
+ * Depends on: model.js, preview.html, and an optional authenticated design service.
+ * Debug: draft stays in memory; only the explicit confirmed Publish action can call save.
+ */
+import { element as el } from '../core/dom.js';
+import { PRESETS, presetDesign, normalizeDesign, sameDesign } from './model.js';
+
+/** One editor powers the safe public demo and the admin-only publishing workspace. */
+export function mountStudio(root, { snapshot = { config: presetDesign() }, service = null, previewUrl = 'preview.html', onPublished = () => {} } = {}) {
+  let baseline = snapshot;
+  let draft = normalizeDesign(snapshot.config);
+  let busy = false;
+  let disposed = false;
+  let surface = 'public';
+  const channel = crypto.randomUUID();
+  const heading = el('div', '', { class: 'studio-heading' });
+  const headingCopy = el('div');
+  headingCopy.append(el('p', 'WORKSPACE / APPEARANCE', { class: 'eyebrow muted' }), el('h1', 'Design Studio'), el('p', 'One identity. Every screen. Choose a layout, make it yours, and preview before publishing.', { class: 'muted' }));
+  const actions = el('div', '', { class: 'studio-actions' });
+  const revert = el('button', 'Discard changes', { type: 'button' });
+  const reload = el('button', 'Reload published', { type: 'button' });
+  reload.hidden = !service;
+  const publish = el('button', service ? 'Publish Everywhere ↗' : 'Preview only', { type: 'button', class: 'primary' });
+  actions.append(reload, revert, publish); heading.append(headingCopy, actions);
+  const message = el('p', service ? 'Published design loaded. Changes stay in preview until you publish.' : 'Safe playground · Sample content only. Sign in as System Admin to publish.', { class: 'studio-message', role: 'status', 'aria-live': 'polite' });
+  const confirmation = el('div', '', { class: 'confirmation', hidden: true });
+  confirmation.append(el('p', 'Publish this design to Public, System Admin, Content Admin, Login, Application, and Activation? Existing accounts and records will not change.'));
+  const confirm = el('button', 'Confirm publish', { type: 'button', class: 'primary' });
+  const cancel = el('button', 'Keep editing', { type: 'button' });
+  confirmation.append(confirm, cancel);
+  const layout = el('div', '', { class: 'studio-layout' });
+  const controls = el('div', '', { class: 'studio-controls' });
+  const themes = el('section', '', { class: 'control-panel' });
+  themes.append(el('h2', '01 / Choose your layout'), el('p', 'Five structures. Not just five colors.', { class: 'muted' }));
+  const themeList = el('div', '', { class: 'theme-list' });
+  const themeButtons = [];
+  for (const [key, def] of Object.entries(PRESETS)) {
+    const button = el('button', '', { type: 'button', class: 'theme-option', 'aria-pressed': key === draft.preset });
+    const glyph = el('span', '', { class: 'layout-glyph', 'data-layout': key, 'aria-hidden': 'true' });
+    for (let i = 0; i < 4; i++) glyph.append(el('span'));
+    const copy = el('span'); copy.append(el('strong', def.name), el('small', def.description));
+    button.append(glyph, copy); button.addEventListener('click', () => { draft = presetDesign(key); update(); });
+    themeButtons.push([key, button]); themeList.append(button);
+  }
+  themes.append(themeList);
+  const tokens = el('section', '', { class: 'control-panel' });
+  tokens.append(el('h2', '02 / Make it yours'));
+  const inputs = {};
+  for (const [key, label] of [['primary', 'Main color'], ['accent', 'Accent color']]) {
+    const field = el('div', '', { class: 'color-field' });
+    const caption = el('label', label, { for: `design-${key}` }); const value = el('output'); caption.append(value);
+    const input = el('input', '', { id: `design-${key}`, type: 'color', value: draft[key] });
+    input.addEventListener('input', () => { draft[key] = input.value; update(); });
+    const hex = el('input', '', { type: 'text', value: draft[key], maxlength: 7, 'aria-label': `${label} hex code`, class: 'hex-input', spellcheck: 'false' });
+    // Invalid text never reaches CSS or publishing; restore the last valid color on commit.
+    const commitHex = strict => {
+      if (/^#[\da-f]{6}$/i.test(hex.value)) { draft[key] = hex.value; update(); }
+      else if (strict) { message.textContent = 'Use a full hex color such as #164B3F. The last valid color was kept.'; update(); }
+    };
+    // Input makes valid keyboard/paste edits immediate; blur validates incomplete text.
+    hex.addEventListener('input', () => commitHex(false));
+    hex.addEventListener('blur', () => commitHex(true));
+    const colors = el('div', '', { class: 'cluster' }); colors.append(hex, input);
+    inputs[key] = { input, value, hex }; field.append(caption, colors); tokens.append(field);
+  }
+  const grid = el('div', '', { class: 'control-grid' });
+  for (const [key, label, options] of [
+    ['font', 'Heading font', [['humanist', 'Humanist'], ['classic', 'Classic serif'], ['contemporary', 'Contemporary']]],
+    ['corners', 'Corners', [['square', 'Square'], ['soft', 'Soft'], ['round', 'Rounded']]],
+    ['sidebar', 'Staff navigation', [['dark', 'Brand color'], ['light', 'Light']]],
+    ['width', 'Page width', [['wide', 'Wide'], ['boxed', 'Boxed']]],
+  ]) {
+    const field = el('div'); const input = el('select', '', { id: `design-${key}` });
+    options.forEach(([value, title]) => input.append(el('option', title, { value })));
+    input.addEventListener('change', () => { draft[key] = input.value; update(); }); inputs[key] = { input };
+    field.append(el('label', label, { for: `design-${key}` }), input); grid.append(field);
+  }
+  tokens.append(grid, el('p', 'Button text contrast is adjusted automatically. All CSS stays in one shared design system.', { class: 'muted' }));
+  const reset = el('button', 'Reset to Modern LGU default', { type: 'button' });
+  reset.addEventListener('click', () => { draft = presetDesign(); update(); message.textContent = 'Default restored in preview only. Publish to make it live.'; });
+  tokens.append(reset); controls.append(themes, tokens);
+  const preview = el('section', '', { class: 'preview-area', 'aria-label': 'Design preview' });
+  const toolbar = el('div', '', { class: 'preview-toolbar' });
+  const surfaceSelect = el('select', '', { 'aria-label': 'Preview screen' });
+  [['public', 'Public website'], ['admin', 'System Admin'], ['editor', 'Content Admin'], ['login', 'Login'], ['signup', 'Signup / Application'], ['activation', 'Activation']].forEach(([value, label]) => surfaceSelect.append(el('option', label, { value })));
+  surfaceSelect.addEventListener('change', () => { surface = surfaceSelect.value; send(); });
+  const devices = el('div', '', { class: 'segmented', 'aria-label': 'Preview width' });
+  const canvas = el('div', '', { class: 'preview-canvas', 'data-device': 'desktop' });
+  for (const name of ['desktop', 'tablet', 'mobile']) {
+    const button = el('button', name[0].toUpperCase() + name.slice(1), { type: 'button', 'aria-pressed': name === 'desktop' });
+    button.addEventListener('click', () => { canvas.dataset.device = name; devices.querySelectorAll('button').forEach(item => item.setAttribute('aria-pressed', item === button)); }); devices.append(button);
+  }
+  const frame = el('iframe', '', { class: 'preview-frame', title: 'Isolated website design preview', src: `${previewUrl}?channel=${encodeURIComponent(channel)}`, sandbox: 'allow-scripts allow-same-origin' });
+  canvas.append(frame); toolbar.append(surfaceSelect, devices);
+  const caption = el('div', '', { class: 'preview-caption' });
+  const selected = el('span'); caption.append(selected, el('span', 'Sample content · Changes are not live'));
+  preview.append(toolbar, canvas, caption); layout.append(controls, preview);
+  root.replaceChildren(heading, confirmation, layout, message);
+
+  /** postMessage is scoped by origin, window identity, and an unpredictable frame channel. */
+  function send() { if (!disposed) frame.contentWindow?.postMessage({ type: 'brgy-design-preview', channel, config: draft, surface }, location.origin); }
+  function update() {
+    draft = normalizeDesign(draft); confirmation.hidden = true;
+    themeButtons.forEach(([key, button]) => { button.setAttribute('aria-pressed', key === draft.preset); button.disabled = busy; });
+    for (const [key, { input, value, hex }] of Object.entries(inputs)) { input.value = draft[key]; input.disabled = busy; if (value) value.textContent = draft[key].toUpperCase(); if (hex) { hex.value = draft[key].toUpperCase(); hex.disabled = busy; } }
+    const dirty = !sameDesign(draft, baseline.config);
+    publish.disabled = !service || busy || !dirty; revert.disabled = busy || !dirty; reset.disabled = busy; reload.disabled = busy;
+    selected.textContent = `${PRESETS[draft.preset].name} · ${dirty ? 'Unpublished draft' : 'Current design'}`;
+    send();
+  }
+  function receive(event) { if (event.origin === location.origin && event.source === frame.contentWindow && event.data?.channel === channel && event.data?.type === 'brgy-design-ready') send(); }
+  window.addEventListener('message', receive); frame.addEventListener('load', send);
+  revert.addEventListener('click', () => { draft = normalizeDesign(baseline.config); update(); message.textContent = 'Unpublished changes discarded.'; });
+  reload.addEventListener('click', async () => {
+    if (!service || busy) return;
+    // Keep a conflicted draft so the owner can compare it to the newly loaded baseline.
+    busy = true; update();
+    try {
+      const latest = await service.read();
+      if (disposed) return;
+      baseline = latest; message.textContent = 'Latest published design loaded. Your draft is preserved; review it before publishing, or Discard changes to use the published version.';
+    } catch (error) { if (!disposed) message.textContent = `Could not reload: ${error.message}`; }
+    finally { busy = false; if (!disposed) update(); }
+  });
+  publish.addEventListener('click', () => { confirmation.hidden = false; confirm.focus(); });
+  cancel.addEventListener('click', () => { confirmation.hidden = true; publish.focus(); });
+  confirm.addEventListener('click', async () => {
+    if (!service || busy || sameDesign(draft, baseline.config)) return;
+    busy = true; update(); confirm.disabled = true; message.textContent = 'Publishing the shared design…';
+    try {
+      const saved = await service.publish(draft, baseline);
+      if (disposed) return;
+      baseline = saved; onPublished(saved.config); message.textContent = 'Published everywhere. Open screens refresh on focus or within one minute.';
+    } catch (error) { if (!disposed) message.textContent = `Not published: ${error.message}`; }
+    finally { busy = false; confirm.disabled = false; if (!disposed) update(); }
+  });
+  const beforeUnload = event => { if (!sameDesign(draft, baseline.config)) { event.preventDefault(); event.returnValue = ''; } };
+  window.addEventListener('beforeunload', beforeUnload); update();
+  const cleanup = () => { disposed = true; window.removeEventListener('message', receive); window.removeEventListener('beforeunload', beforeUnload); };
+  cleanup.canLeave = () => !busy && (sameDesign(draft, baseline.config) || window.confirm('Discard unpublished design changes and leave the Design Studio?'));
+  return cleanup;
+}

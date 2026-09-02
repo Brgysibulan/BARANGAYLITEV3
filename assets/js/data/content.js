@@ -8,13 +8,18 @@ import { contentContract, pickFields, validatePayload } from './contracts.js';
 
 export function createContent(client, auth) {
   /** Staff sees authorized content; publicOnly always excludes unpublished records. */
-  async function list(table, { publicOnly = false, page = 0, pageSize = 50 } = {}) {
+  async function list(table, { publicOnly = false, page = 0, pageSize = 50, search = '' } = {}) {
     const def = contentContract(table);
     if (!Number.isInteger(page) || page < 0 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100) throw new Error('Invalid pagination.');
     if (!publicOnly) await auth.requireStaff();
     let query = client.from(table).select(['id', ...def.fields].join(','), { count: 'exact' });
     // Keep the public predicate even when a staff session is present.
     if (publicOnly) query = query.eq(def.flag, true);
+    if (search) {
+      if (table !== 'services' || typeof search !== 'string' || search.length > 100) throw new Error('Service searches must be at most 100 characters.');
+      // Escaping LIKE wildcards keeps resident searches literal, not filter expressions.
+      query = query.ilike('name', '%' + search.replace(/[\\%_]/g, '\\$&') + '%');
+    }
     const result = await query.order(def.order, { ascending: !def.descending, nullsFirst: false })
       .order('id', { ascending: true }).range(page * pageSize, (page + 1) * pageSize - 1);
     return { rows: unwrap(result) || [], count: result.count ?? 0 };

@@ -4,9 +4,9 @@ Logic-first continuation of `Brgysibulan/BRGYWEB-LITE`, using the **same existin
 
 ## Current stage
 
-This commit is the data rewiring foundation, **not the finished redesigned website**. The public, System Admin, and Content Admin shells are deliberately unstyled, read-only connection-check screens. Staff sign-in uses the existing email and password. No new System Admin is created, no password reset is performed, and no legacy styling is imported.
+The shared Design Studio now provides five actual government layouts, configurable color/font/corners/navigation/width, isolated previews for six screen types, and confirmed admin-only publishing. Public pages display the existing published data with the same shared design used by staff and access screens. Staff content/account lists remain read-only in this stage. Existing System Admin credentials are unchanged.
 
-The headless service modules include explicit content writes, uploads, settings/profile updates, verification, and existing Content Admin workflows. They are not automatically executed and are not yet exposed as editing controls in these screens.
+The headless service modules retain content writes, uploads, settings/profile updates, verification, and Content Admin workflows. These never execute automatically. New application/activation screens reuse existing eligibility and role guards. See [Design Studio documentation](docs/DESIGN-STUDIO.md) for the shared CSS architecture and debugging flow.
 
 ## Existing system preserved
 
@@ -15,7 +15,7 @@ The headless service modules include explicit content writes, uploads, settings/
 - All 12 existing public tables retain their schema, data, IDs, and RLS.
 - Existing QR tokens, file URLs, and 4 Storage buckets are unchanged.
 - The deployed `manage-editors` Edge Function and 3 existing RPCs are reused.
-- `site_settings.design_theme` and saved legacy color values are not erased or read into the new runtime.
+- The V3 design is saved only under `site_settings.design_theme.brgyweblitev3`; legacy JSON keys and color columns are preserved. No legacy CSS is executed.
 - V3 has a separate browser-session storage key. The same account can sign in, but old-site session tokens are not copied, cleared, or overwritten.
 
 **Shared data warning:** a future explicit edit through V3 changes the same records used by the old website. There is no copied or staging database.
@@ -30,6 +30,10 @@ login.html                    Existing staff login
 assets/js/core/               Client, verified roles, service composition, routing
 assets/js/data/               Presentation-independent data operations
 assets/js/staff/              Read-only staff workspace
+assets/js/design/             Shared layouts, live design runtime, and isolated previews
+assets/css/design-system.css  All CSS and responsive layout rules
+design-studio.html            Public sample playground (no publishing)
+signup.html / activate.html   Existing Content Admin application/activation flows
 assets/js/public/             Published public data view
 tests/                        Mocked safety and contract tests
 scripts/                      Local checks and read-only live verification
@@ -59,4 +63,4 @@ Never put a Supabase secret/service-role key in this frontend. The configured pu
 
 ## Deployment boundary
 
-The static source can be served by the existing GitHub Pages workflow or ordinary static hosting. No new hosting provider, Supabase project, schema migration, deployment configuration, or Auth redirect allowlist was created by this rewiring change. Activation and invitation screens must be wired and their exact deployment URLs checked against the existing Auth configuration before enabling those UI actions.
+The static source can be served by the existing GitHub Pages workflow or ordinary static hosting. No new hosting provider, Supabase project, schema migration, or Auth redirect allowlist was created. Application/activation screens reuse the existing services; invitation email redirects still need the owner to validate their production URL against the existing Auth configuration. No invitation, signup, password update, or live theme publication is performed by the automated tests.

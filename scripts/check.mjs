@@ -30,7 +30,10 @@ for (const file of files) {
   }
   if (file.endsWith('.html')) {
     const source = await readFile(file, 'utf8');
-    if (/<style\b|\sstyle=|rel=["']stylesheet/i.test(source)) throw new Error(`Unexpected legacy styling: ${file}`);
+    if (/<style\b|\sstyle=/i.test(source)) throw new Error(`Inline styling is not allowed: ${file}`);
+    const styles = [...source.matchAll(/<link\b[^>]*rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/g)];
+    if (styles.length !== 1 || !styles[0][1].endsWith('assets/css/design-system.css')) throw new Error(`Use exactly one central stylesheet: ${file}`);
+    await access(path.resolve(path.dirname(file), styles[0][1]));
     for (const match of source.matchAll(/src="([^"]+)"/g)) {
       if (match[1].startsWith('https:')) {
         if (match[1] !== 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.js') throw new Error('Unapproved external script');
@@ -38,6 +41,8 @@ for (const file of files) {
     }
   }
 }
+const cssFiles = files.filter(file => file.endsWith('.css'));
+if (cssFiles.length !== 1 || !cssFiles[0].endsWith('design-system.css')) throw new Error('Keep all presentation CSS in the central design system.');
 // DOM/router utilities are intentionally presentation-related; data services are not.
 const logicFiles = files.filter(file => /assets[\\/]js[\\/](core|data)[\\/]/.test(file) && !/dom\.js|router\.js/.test(file));
 for (const file of logicFiles) {

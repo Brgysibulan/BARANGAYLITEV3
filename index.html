@@ -1,26 +1,19 @@
 <!doctype html>
 <html lang="fil">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="BRGYWEBLITEV3: existing barangay data connection, without the old design layers.">
-  <meta name="robots" content="noindex,nofollow">
-  <title>BRGYWEBLITEV3 — Data Connection</title>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Barangay Sibulan public information, services, announcements, and transparency documents.">
+  <meta property="og:type" content="website"><meta property="og:title" content="BRGYWEBLITEV3 · Barangay Sibulan"><meta property="og:description" content="Public information, services, announcements, and transparency documents."><meta property="og:image" content="https://brgysibulan.github.io/BARANGAYLITEV3/assets/images/social-card.png">
+  <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="BRGYWEBLITEV3 · Barangay Sibulan"><meta name="twitter:description" content="Public information, services, announcements, and transparency documents."><meta name="twitter:image" content="https://brgysibulan.github.io/BARANGAYLITEV3/assets/images/social-card.png">
+  <title>Barangay Sibulan — BRGYWEBLITEV3</title>
+  <link rel="stylesheet" href="assets/css/design-system.css">
 </head>
 <body>
-  <!-- Public shell. Routes and published-data reads: assets/js/public/app.js. -->
-  <!-- This is the unstyled connection-check stage, not the final public website design. -->
-  <header>
-    <h1 id="site-name">BRGYWEBLITEV3</h1>
-    <p>Data-connection preview. Wala pa ang bagong website design.</p>
-    <a href="login.html">Existing Staff Login</a>
-  </header>
-  <nav id="navigation" aria-label="Public information"></nav>
-  <main>
-    <p id="status" role="status" aria-live="polite">Loading barangay information…</p>
-    <section id="view" aria-label="Barangay information"></section>
-  </main>
-  <noscript>Enable JavaScript to view current barangay information.</noscript>
+  <!-- Public shell: public/app.js reads published data; design/public-renderer.js lays it out. -->
+  <a class="skip-link" href="#public-main">Skip to content</a>
+  <p id="status" class="container" role="status" aria-live="polite">Loading barangay information…</p>
+  <div id="public-root"></div>
+  <noscript>Enable JavaScript to read the latest barangay information.</noscript>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.4/dist/umd/supabase.js" defer></script>
   <script type="module" src="assets/js/public/app.js"></script>
 </body>

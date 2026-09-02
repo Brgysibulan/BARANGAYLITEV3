@@ -4,14 +4,23 @@
  * Debug: form errors appear in #status; incorrect redirects require checking the live role.
  */
 import { getServices } from './core/services.js';
+import { accessSurface } from './design/access-renderer.js';
+import { watchDesign } from './design/runtime.js';
+import { brand } from './design/public-renderer.js';
 
 // Waiting for DOMContentLoaded also waits for the deferred SDK script.
 function start() {
+  document.querySelector('#access-root').replaceChildren(accessSurface('login'));
   const form = document.querySelector('#login-form');
   const status = document.querySelector('#status');
   const button = form.querySelector('button');
   let auth;
-  try { auth = getServices().auth; }
+  try {
+    const services = getServices(); auth = services.auth;
+    watchDesign(services.design).then(stop => window.addEventListener('pagehide', stop, { once: true }));
+    // Update only identity, never re-render a form after the user starts typing.
+    services.settings.read().then(settings => document.querySelector('.access-aside .brand')?.replaceWith(brand(settings))).catch(() => {});
+  }
   catch (error) { status.textContent = error.message; button.disabled = true; return; }
   const destination = role => role === 'admin' ? 'admin/index.html' : 'editor/index.html';
   let submitting = false;

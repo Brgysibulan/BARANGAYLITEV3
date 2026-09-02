@@ -1,0 +1,224 @@
+/**
+ * Purpose: single source of CSS for the Design Studio and every V3 website shell.
+ * Depends on: validated html data attributes and CSS variables from design/runtime.js.
+ * Debug: tokens -> shared primitives -> surface -> preset -> responsive overrides.
+ * Never add legacy injectors or per-page style blocks; extend the appropriate section here.
+ */
+
+/* 01. Shared tokens and accessible primitives. */
+:root { color-scheme: light; --primary:#164b3f; --on-primary:#fff; --accent:#e4bd73; --on-accent:#000; --ink:#202b28; --muted:#59645f; --paper:#fff; --canvas:#f3f4f0; --line:#dce1da; --radius:8px; --content:1280px; --heading-font:"Segoe UI",Arial,sans-serif; font-family:"Segoe UI",Arial,sans-serif; color:var(--ink); background:var(--canvas); }
+* { box-sizing:border-box; }
+[hidden] { display:none !important; }
+body { margin:0; font-size:15px; line-height:1.6; }
+h1,h2,h3,h4,p { margin:0 0 1rem; }
+h1,h2,h3,h4 { font-family:var(--heading-font); line-height:1.2; letter-spacing:-.025em; }
+h1 { font-size:clamp(2rem,4vw,3.5rem); font-weight:650; }
+h2 { font-size:clamp(1.5rem,2.8vw,2.2rem); font-weight:650; }
+h3 { font-size:1.16rem; }
+a { color:inherit; text-underline-offset:4px; }
+button,input,select,textarea { font:inherit; }
+button,.button { display:inline-flex; align-items:center; justify-content:center; gap:.5rem; padding:.65rem 1rem; min-height:44px; border:1px solid var(--line); border-radius:var(--radius); background:var(--paper); color:var(--ink); cursor:pointer; text-decoration:none; font-weight:600; line-height:1.35; }
+button:hover,.button:hover { border-color:var(--ink); }
+button:disabled { opacity:.5; cursor:not-allowed; }
+.primary { background:var(--primary); color:var(--on-primary); border-color:transparent; }
+.accent { background:var(--accent); color:var(--on-accent); border-color:transparent; }
+:focus-visible { outline:3px solid #1977ce; outline-offset:4px; }
+input,select,textarea { width:100%; border:1px solid #abb5ae; border-radius:var(--radius); padding:.7rem .8rem; background:#fff; color:var(--ink); min-height:44px; }
+label { display:block; font-size:.83rem; font-weight:650; margin-bottom:.4rem; }
+form > label,form > .field { margin-top:1rem; }
+input[type=color] { width:52px; padding:4px; cursor:pointer; }
+img { max-width:100%; object-fit:cover; }
+small,.muted { color:var(--muted); }
+.eyebrow { font-size:.7rem; text-transform:uppercase; letter-spacing:.16em; font-weight:750; }
+.cluster { display:flex; align-items:center; gap:.75rem; flex-wrap:wrap; }
+.stack { display:grid; gap:1rem; }
+.container { width:min(var(--content),calc(100% - 64px)); margin-inline:auto; }
+.pill { display:inline-block; padding:.2rem .65rem; font-size:.7rem; border:1px solid var(--line); border-radius:99px; background:var(--paper); color:var(--ink); }
+.notice { padding:1rem; border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:var(--radius); background:var(--paper); }
+#status:empty { display:none; }
+.skip-link { position:absolute; z-index:100; left:1rem; top:-100px; background:#fff; padding:.75rem; }
+.skip-link:focus { top:1rem; }
+.sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+[data-corners=square] { --radius:0px; }
+[data-corners=round] { --radius:18px; }
+[data-width=boxed] { --content:1080px; }
+
+/* 02. Public website: actual sections are reordered by the selected layout model. */
+.public-surface { background:var(--paper); min-height:100vh; }
+.utility { padding:.45rem 0; background:var(--primary); color:var(--on-primary); font-size:.67rem; letter-spacing:.08em; }
+.utility .container { display:flex; justify-content:space-between; gap:1rem; }
+.masthead { padding:1.4rem 0; display:flex; align-items:center; justify-content:space-between; gap:2rem; }
+.brand { display:flex; align-items:center; gap:1rem; text-decoration:none; min-width:0; }
+.brand-mark { width:56px; height:56px; flex-shrink:0; border:1px solid var(--line); border-radius:50%; display:grid; place-items:center; color:var(--ink); background:var(--canvas); font-family:Georgia,serif; font-size:1.5rem; }
+.brand img { width:56px; height:56px; object-fit:contain; }
+.brand strong { display:block; font-family:var(--heading-font); font-size:1.3rem; line-height:1.25; }
+.brand small { display:block; font-size:.68rem; letter-spacing:.09em; text-transform:uppercase; }
+.public-nav { border-block:1px solid var(--line); }
+.public-nav .container { display:flex; align-items:center; gap:2rem; flex-wrap:wrap; padding-block:.85rem; }
+.public-nav a { font-size:.8rem; text-decoration:none; padding:.25rem 0; }
+.public-nav a[aria-current=page] { font-weight:750; border-bottom:2px solid var(--primary); }
+.hero { display:grid; grid-template-columns:1.45fr 1fr; gap:3rem; padding-block:3.5rem; }
+.hero h1 { max-width:740px; }
+.hero-copy > p:not(.eyebrow) { max-width:570px; color:var(--muted); }
+.hero .eyebrow { color:var(--muted); }
+.resident-desk { padding:2rem; background:var(--primary); color:var(--on-primary); border-radius:var(--radius); display:flex; flex-direction:column; justify-content:center; }
+.resident-desk a { display:flex; justify-content:space-between; border-top:1px solid currentColor; padding:.85rem 0; text-decoration:none; font-size:.87rem; }
+.resident-desk .eyebrow { color:inherit; }
+.quick-links { display:flex; gap:1rem; flex-wrap:wrap; margin-top:1.6rem; }
+.section-grid { display:grid; }
+.public-section { padding-block:2.7rem; border-top:1px solid var(--line); min-width:0; }
+.section-heading { display:flex; justify-content:space-between; align-items:end; gap:1rem; margin-bottom:1.4rem; }
+.section-heading h2,.section-heading p { margin-bottom:0; }
+.section-heading .eyebrow { margin-bottom:.55rem; color:var(--muted); }
+.section-heading a { white-space:nowrap; font-size:.82rem; }
+.cards { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1.2rem; }
+.content-card { border:1px solid var(--line); border-radius:var(--radius); padding:1.5rem; background:var(--paper); min-width:0; overflow-wrap:anywhere; }
+.content-card .eyebrow { color:var(--muted); margin-bottom:.7rem; }
+.content-card p { color:var(--muted); font-size:.88rem; }
+.content-card > :last-child { margin-bottom:0; }
+.content-card img { width:100%; aspect-ratio:16/10; border-radius:var(--radius); margin-bottom:1rem; }
+.content-card .body-copy { white-space:pre-line; }
+.content-card details { font-size:.85rem; margin-top:1rem; }
+.content-card summary { cursor:pointer; min-height:36px; font-weight:600; }
+.empty { border:1px dashed var(--line); padding:1.5rem; color:var(--muted); border-radius:var(--radius); }
+.map-section { background:var(--canvas); border-top:1px solid var(--line); padding:3rem 0; }
+.map-layout { display:grid; grid-template-columns:1fr 1.3fr; gap:3rem; align-items:center; }
+.map-slot { min-height:200px; display:grid; place-items:center; border:1px solid var(--line); border-radius:var(--radius); padding:2rem; background:#e8ece5; }
+.map-slot iframe { width:100%; min-height:280px; border:0; }
+.public-footer { background:var(--primary); color:var(--on-primary); padding:2.5rem 0; }
+.public-footer .container { display:flex; justify-content:space-between; gap:2rem; flex-wrap:wrap; }
+.public-footer p { font-size:.8rem; }
+.public-footer .eyebrow { font-size:.65rem; }
+.page-heading { padding-block:2.5rem 1rem; }
+.page-content { padding-bottom:3rem; }
+.service-search { display:flex; gap:.6rem; margin-top:1.5rem; }
+.service-search input { min-width:0; }
+
+/* 03. Five layout identities; these alter structure, not merely the palette. */
+[data-theme=national-authority] .masthead { padding-block:2rem; }
+[data-theme=national-authority] .hero { border-bottom:4px solid var(--accent); grid-template-columns:1fr; }
+[data-theme=national-authority] .resident-desk { flex-direction:row; gap:2rem; justify-content:space-between; padding:1.3rem; }
+[data-theme=national-authority] .resident-desk a { border:0; padding:0; }
+[data-theme=national-authority] .resident-desk p { margin:0; }
+[data-theme=executive-civic] .masthead { padding-block:1rem; }
+[data-theme=executive-civic] .hero { grid-template-columns:1fr; text-align:center; max-width:980px; margin:auto; }
+[data-theme=executive-civic] .hero h1,[data-theme=executive-civic] .hero-copy > p { margin-inline:auto; }
+[data-theme=executive-civic] .quick-links { justify-content:center; }
+[data-theme=executive-civic] .resident-desk { flex-direction:row; justify-content:space-around; align-items:center; padding:1rem; text-align:left; }
+[data-theme=executive-civic] .resident-desk a { border:0; }
+[data-theme=executive-civic] .resident-desk p { margin:0; }
+[data-theme=executive-civic] [data-section=officials] .cards { grid-template-columns:repeat(4,minmax(0,1fr)); }
+[data-theme=public-service] .hero { grid-template-columns:1fr; background:var(--canvas); padding:2.5rem; margin-top:2rem; border-radius:var(--radius); }
+[data-theme=public-service] .hero-copy { max-width:850px; }
+[data-theme=public-service] .resident-desk { display:none; }
+[data-theme=public-service] [data-section=services] .content-card { border-top:4px solid var(--primary); }
+[data-theme=institutional] .masthead { justify-content:center; text-align:center; padding-block:2rem; }
+[data-theme=institutional] .masthead > .button { display:none; }
+[data-theme=institutional] .public-nav .container { justify-content:center; }
+[data-theme=institutional] .hero { grid-template-columns:1fr; padding-block:2rem; }
+[data-theme=institutional] .hero h1 { font-size:2.2rem; }
+[data-theme=institutional] .resident-desk { padding:1rem 1.5rem; flex-direction:row; align-items:center; gap:2rem; }
+[data-theme=institutional] .resident-desk p { margin:0; }
+[data-theme=institutional] .resident-desk a { border:0; padding:0; }
+[data-theme=institutional] .section-grid { grid-template-columns:1.6fr 1fr; gap:0 2.5rem; }
+[data-theme=institutional] .section-grid .cards { grid-template-columns:1fr; }
+[data-theme=institutional] .section-grid .content-card { border-width:0 0 1px; padding:1.2rem 0; }
+[data-theme=modern-lgu] .public-nav { background:var(--canvas); border:0; }
+[data-theme=modern-lgu] .hero { padding-block:4rem; }
+[data-theme=modern-lgu] .hero h1 { font-size:clamp(2.3rem,4.5vw,4rem); }
+
+/* 04. Shared staff workspace and login/application shells. */
+.workspace { display:grid; grid-template-columns:240px minmax(0,1fr); min-height:100vh; }
+.workspace-header { grid-column:1 / -1; padding:1rem 2rem; display:flex; justify-content:space-between; align-items:center; gap:1rem; background:var(--paper); border-bottom:1px solid var(--line); }
+.workspace-header p { margin:0; font-size:.8rem; }
+.workspace-nav { background:var(--primary); color:var(--on-primary); padding:1.5rem 1rem; }
+.workspace-nav ul { list-style:none; margin:0; padding:0; }
+.workspace-nav a { display:block; padding:.65rem .8rem; text-decoration:none; font-size:.82rem; border-radius:var(--radius); }
+.workspace-nav a[aria-current=page] { background:var(--accent); color:var(--on-accent); font-weight:700; }
+[data-sidebar=light] .workspace-nav { background:var(--paper); color:var(--ink); border-right:1px solid var(--line); }
+.workspace-main { grid-column:2; padding:2rem; min-width:0; }
+.workspace-nav[hidden] + .workspace-main { grid-column:1 / -1; }
+.workspace-main > h1 { font-size:1.6rem; }
+.workspace-main #view { overflow-x:auto; }
+.workspace-main table { border-collapse:collapse; width:100%; background:var(--paper); font-size:.82rem; }
+.workspace-main th,.workspace-main td { text-align:left; border-bottom:1px solid var(--line); padding:.8rem; min-width:110px; max-width:400px; overflow-wrap:anywhere; }
+.workspace-main th { background:var(--canvas); }
+.workspace-main caption { text-align:left; padding:.7rem 0; }
+.access-shell { display:grid; grid-template-columns:1fr 1fr; min-height:100vh; }
+.access-aside { padding:clamp(2rem,6vw,6rem); background:var(--primary); color:var(--on-primary); display:flex; flex-direction:column; justify-content:center; }
+.access-aside h2 { font-size:clamp(2.2rem,4vw,4rem); }
+.access-aside .brand { margin-bottom:4rem; }
+.access-aside .brand small { color:inherit; opacity:.85; }
+.access-main { padding:3rem 2rem; display:grid; place-items:center; background:var(--paper); }
+.access-card { width:min(100%,460px); }
+.access-card h1 { font-size:2rem; margin-top:1.5rem; }
+.access-card form { display:grid; gap:1rem; }
+.access-card form label { margin:0; }
+.access-card .field input { margin-top:.35rem; }
+[data-theme=institutional] .access-shell,[data-theme=national-authority] .access-shell { grid-template-columns:1fr; }
+[data-theme=institutional] .access-aside,[data-theme=national-authority] .access-aside { padding:2rem; text-align:center; }
+[data-theme=institutional] .access-aside h2,[data-theme=national-authority] .access-aside h2 { font-size:1.6rem; }
+[data-theme=institutional] .access-aside .brand,[data-theme=national-authority] .access-aside .brand { justify-content:center; margin:0 0 1rem; }
+[data-theme=executive-civic] .workspace,[data-theme=institutional] .workspace { grid-template-columns:1fr; }
+[data-theme=executive-civic] .workspace-main,[data-theme=institutional] .workspace-main { grid-column:1; }
+[data-theme=executive-civic] .workspace-nav ul,[data-theme=institutional] .workspace-nav ul { display:flex; flex-wrap:wrap; }
+
+/* 05. Design Studio: controls remain usable while the isolated preview changes. */
+.studio-page { background:#f3f4f0; min-height:100vh; }
+.studio-topbar { background:#fff; border-bottom:1px solid #dce1da; padding:1rem 2.5rem; display:flex; align-items:center; justify-content:space-between; gap:1rem; }
+.studio-topbar strong { font-size:.92rem; }
+.studio-topbar small { font-size:.7rem; }
+.studio-wrap { padding:2.4rem; max-width:1760px; margin:auto; }
+.studio-heading { display:flex; justify-content:space-between; align-items:center; gap:1.5rem; margin-bottom:1.6rem; }
+.studio-heading h1 { font-size:2rem; margin-bottom:.45rem; }
+.studio-heading p { font-size:.85rem; margin:0; max-width:640px; }
+.studio-layout { display:grid; grid-template-columns:310px minmax(0,1fr); gap:1.5rem; align-items:start; }
+.studio-controls { display:grid; gap:1rem; }
+.control-panel { background:#fff; border:1px solid #dce1da; border-radius:10px; padding:1.25rem; }
+.control-panel h2 { font:700 .9rem "Segoe UI",Arial,sans-serif; letter-spacing:0; margin-bottom:1rem; }
+.control-panel > p { font-size:.75rem; }
+.theme-list { display:grid; gap:.55rem; }
+.theme-option { text-align:left; justify-content:start; gap:.85rem; padding:.8rem; border-radius:6px; min-width:0; }
+.theme-option[aria-pressed=true] { border:2px solid #164b3f; padding:calc(.8rem - 1px); background:#f2f7f3; }
+.theme-option strong { font-size:.78rem; display:block; }
+.theme-option small { font-size:.64rem; font-weight:400; display:block; line-height:1.4; }
+.layout-glyph { display:grid; width:38px; height:35px; flex-shrink:0; border:1px solid #b9c4bd; padding:4px; gap:3px; grid-template-columns:1fr 1fr; background:white; }
+.layout-glyph span { background:#bac9c0; }
+.layout-glyph span:first-child { grid-column:1 / -1; background:#416253; }
+.layout-glyph[data-layout=public-service] { grid-template-columns:repeat(3,1fr); }
+.layout-glyph[data-layout=institutional] { grid-template-columns:2fr 1fr; }
+.layout-glyph[data-layout=executive-civic] span:nth-child(2) { grid-column:1 / -1; }
+.layout-glyph[data-layout=national-authority] span:nth-child(3) { grid-column:1 / -1; }
+.color-field { display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:.8rem; }
+.color-field label { margin:0; }
+.color-field output { font:12px monospace; color:#59645f; display:block; }
+.hex-input { width:90px; font:12px monospace; padding:.5rem; }
+.control-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+.control-grid select,.control-panel select { font-size:.78rem; }
+.preview-area { min-width:0; border:1px solid #dce1da; border-radius:10px; background:#e7eae4; overflow:hidden; }
+.preview-toolbar { padding:.75rem 1rem; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:.75rem; background:#fff; border-bottom:1px solid #dce1da; }
+.preview-toolbar select { width:auto; font-size:.78rem; }
+.segmented { display:flex; border:1px solid #dce1da; padding:3px; border-radius:7px; }
+.segmented button { border:0; background:transparent; font-size:.72rem; padding:.45rem .65rem; min-height:34px; border-radius:4px; }
+.segmented button[aria-pressed=true] { background:#edf1ec; color:#164b3f; }
+.preview-canvas { padding:1.5rem; overflow-x:auto; }
+.preview-frame { display:block; width:100%; height:760px; border:0; background:#fff; box-shadow:0 5px 18px #162c1912; margin:auto; }
+.preview-canvas[data-device=tablet] .preview-frame { width:768px; max-width:none; }
+.preview-canvas[data-device=mobile] .preview-frame { width:390px; max-width:none; }
+.preview-caption { display:flex; justify-content:space-between; gap:1rem; font-size:.7rem; padding:.65rem 1rem; background:#fff; color:#59645f; }
+.studio-message { font-size:.8rem; margin-top:1rem; }
+.studio-actions { display:flex; gap:.5rem; flex-wrap:wrap; }
+.studio-actions button { font-size:.8rem; }
+.confirmation { border:1px solid #b39b63; background:#fff8e6; padding:1rem; border-radius:8px; margin-bottom:1rem; }
+.confirmation p { font-size:.85rem; }
+.workspace-main .studio-wrap { padding:0; }
+.workspace-main .studio-layout { grid-template-columns:280px minmax(0,1fr); }
+.preview-banner { padding:.5rem 1rem; background:#fff8df; color:#60481e; font-size:.75rem; border-bottom:1px solid #e4d6ae; }
+
+/* 06. Responsive overrides: viewport changes apply inside the preview iframe too. */
+@media(min-width:1100px) { [data-theme=executive-civic] .public-header { display:flex; align-items:center; flex-wrap:wrap; } [data-theme=executive-civic] .utility { width:100%; } [data-theme=executive-civic] .masthead { width:42%; padding-left:32px; } [data-theme=executive-civic] .masthead > .button { display:none; } [data-theme=executive-civic] .public-nav { flex:1; border:0; } [data-theme=executive-civic] .public-nav .container { gap:1rem; width:auto; } }
+@media(max-width:1100px) { .cards { grid-template-columns:repeat(2,minmax(0,1fr)); } .studio-wrap { padding:1.5rem; } .workspace { grid-template-columns:190px minmax(0,1fr); } .workspace-main { padding:1.25rem; } .workspace-main .studio-layout { grid-template-columns:1fr; } .workspace-main .studio-controls { grid-template-columns:1fr 1fr; } }
+@media(max-width:800px) { .container { width:calc(100% - 36px); } .hero,.map-layout { grid-template-columns:1fr; gap:1.5rem; } .hero { padding-block:2rem; } .masthead { gap:1rem; } .masthead > .button { display:none; } .public-nav .container { gap:.7rem 1.3rem; } .public-nav a { min-height:32px; display:flex; align-items:center; } .resident-desk { padding:1.5rem; } [data-theme=institutional] .section-grid { grid-template-columns:1fr; } [data-theme=national-authority] .resident-desk,[data-theme=executive-civic] .resident-desk,[data-theme=institutional] .resident-desk { flex-wrap:wrap; gap:1rem; } .studio-layout { grid-template-columns:1fr; } .studio-controls { grid-template-columns:1fr 1fr; } .studio-heading { align-items:start; flex-direction:column; } .access-shell { grid-template-columns:1fr; } .access-aside { padding:2rem; } .access-aside .brand { margin-bottom:1.5rem; } .workspace { grid-template-columns:1fr; } .workspace-nav ul { display:flex; flex-wrap:wrap; } .workspace-nav { padding:.5rem; } .workspace-header { padding:1rem; flex-wrap:wrap; } }
+@media(max-width:520px) { body { font-size:14px; } .utility .container span:last-child { display:none; } .brand strong { font-size:1.1rem; } .brand small { font-size:.6rem; } .brand-mark,.brand img { width:44px; height:44px; } .cards,[data-theme=executive-civic] [data-section=officials] .cards { grid-template-columns:1fr; } .section-heading { align-items:start; } .section-heading a { font-size:.7rem; } .public-section { padding-block:2rem; } .hero h1 { font-size:2.1rem; } [data-theme=modern-lgu] .hero { padding-block:2.5rem; } [data-theme=public-service] .hero { padding:1.5rem; } .studio-wrap { padding:1.1rem; } .studio-topbar { padding:1rem; } .studio-topbar small { display:none; } .studio-controls,.workspace-main .studio-controls { grid-template-columns:1fr; } .preview-canvas { padding:.5rem; } .studio-heading h1 { font-size:1.7rem; } .preview-toolbar { align-items:stretch; } .preview-caption { flex-direction:column; gap:0; } .access-main { padding:2rem 1.3rem; } .service-search { flex-direction:column; } }
+@media(prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto !important; } }
+@media(max-width:800px) { .workspace-main { grid-column:1; } }

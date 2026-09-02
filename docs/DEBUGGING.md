@@ -1,5 +1,7 @@
 # Saan titingin kapag may problema
 
+Para sa CSS, five-layout presets, preview, at safe publishing, basahin ang [Design Studio guide](DESIGN-STUDIO.md). Iisa lang ang stylesheet: `assets/css/design-system.css`. Ang bago o binagong code ay may Purpose/dependencies/Debug comments.
+
 May `Purpose`, dependencies, at `Debug` notes sa simula ng bawat JavaScript module. May comments din sa safeguards at request flow. Huwag burahin ang safeguard para lamang mawala ang error; hanapin muna kung saan talaga pumalya ang request.
 
 ## Mabilis na mapa
