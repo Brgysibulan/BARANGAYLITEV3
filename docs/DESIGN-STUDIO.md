@@ -9,12 +9,22 @@ All CSS lives in `assets/css/design-system.css`, in numbered sections: tokens, P
 ## Draft → review → publish
 
 1. Sign in using the existing System Admin credentials, then open **Design Studio** in the navigation.
-2. Choose a preset; customize main/accent color, heading font, corners, navigation tone, and width. Preset selection restores that preset's defaults.
+2. Choose a preset; customize main, secondary, and accent colors, heading font, corners, navigation tone, and width. Preset selection restores that preset's defaults.
 3. Preview Public, System Admin, Content Admin, Login, Signup/Application, or Activation at desktop, tablet, and mobile widths.
 4. **Publish Everywhere** then **Confirm publish** saves the shared design. Until confirmation, changes exist only in memory inside the draft editor. Refresh/leave warnings protect unsaved drafts.
 5. **Discard changes** restores the loaded published baseline. **Reset to Modern LGU default** changes the draft only, so it still needs publishing.
 
 The public `design-studio.html` is a separate safe playground. Publishing is disabled there; it contains labelled sample data only. `preview.html` has no Supabase SDK and cannot submit login/application/activation forms. Origin, source-window, and random-channel checks isolate preview messages.
+
+## Color controls and English interface
+
+- **Main color** controls primary buttons and primary highlights.
+- **Secondary color** controls the resident quick-links panel, public footer, colored staff sidebar, and access-screen side panel. The light sidebar option remains light. The Public Service layout intentionally hides the quick-links panel; its footer still uses the secondary color.
+- **Accent color** controls accent buttons, selected staff navigation, and decorative accents.
+
+Every color accepts a native picker or a six-digit hex value. Foreground text is derived as black or white for readability. Invalid text cannot reach the preview or saved theme. The optional `secondary` key stays within version 1; older saved themes inherit their existing main color, so they are not recolored on upgrade. Reset, discard, preview, and confirmed publishing all include the new color. No new dependency or database migration is needed.
+
+All authored controls, instructions, empty/error messages, and HTML language metadata are English. Stored barangay records, names, and administrator-written content are displayed unchanged; this release does not translate live database content.
 
 ## Existing Supabase contract
 

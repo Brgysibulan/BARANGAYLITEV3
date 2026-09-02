@@ -14,6 +14,9 @@ export function applyDesign(value, root = document.documentElement) {
   root.dataset.sidebar = config.sidebar;
   root.style.setProperty('--primary', config.primary);
   root.style.setProperty('--on-primary', contrastText(config.primary));
+  // The same validated panel color/foreground pair is used in previews and live shells.
+  root.style.setProperty('--secondary', config.secondary);
+  root.style.setProperty('--on-secondary', contrastText(config.secondary));
   root.style.setProperty('--accent', config.accent);
   root.style.setProperty('--on-accent', contrastText(config.accent));
   root.style.setProperty('--heading-font', FONTS[config.font]);

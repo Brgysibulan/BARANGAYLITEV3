@@ -1,6 +1,6 @@
 /**
  * Purpose: small, unstyled presentation helpers; no database or auth operations.
- * Used by: the public and staff read-only connection screens.
+ * Used by: public views, staff controls, and Design Studio; stored text stays unchanged.
  * Debug: check requested field names if a table cell is empty.
  */
 /** Use textContent for database text so stored content cannot inject HTML/scripts. */
@@ -24,7 +24,7 @@ export function safeLink(value, label = 'Open file') {
 
 /** Render only the requested fields, preserving booleans and empty-state feedback. */
 export function showRecords(rows, fields) {
-  if (!rows.length) return element('p', 'Wala pang records.');
+  if (!rows.length) return element('p', 'No records yet.');
   const table = element('table');
   const caption = element('caption', `${rows.length} records on this page`);
   const head = element('thead');

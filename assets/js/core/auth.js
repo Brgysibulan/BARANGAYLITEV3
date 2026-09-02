@@ -27,7 +27,7 @@ export function createAuth(client) {
   async function requireStaff(roles = ['admin', 'editor']) {
     const staff = await currentStaff();
     if (!staff || !roles.includes(staff.profile.role)) {
-      const error = new Error('Kailangan ang aktibong account na may tamang access.');
+      const error = new Error('An active staff account with the required access is needed.');
       error.code = 'STAFF_ACCESS_REQUIRED';
       throw error;
     }
@@ -41,7 +41,7 @@ export function createAuth(client) {
     const staff = await currentStaff();
     if (!staff) {
       unwrap(await client.auth.signOut({ scope: 'local' }));
-      throw new Error('Wala pang aktibong staff access ang account na ito. Kontakin ang System Admin.');
+      throw new Error('This account does not have active staff access. Contact the System Admin.');
     }
     return staff;
   }

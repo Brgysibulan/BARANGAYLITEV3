@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { createDesign, designSnapshot } from '../assets/js/data/design.js';
 import { createContent } from '../assets/js/data/content.js';
 import { PRESETS, presetDesign, normalizeDesign, mergeDesign, contrastText, luminance, sameDesign } from '../assets/js/design/model.js';
+import { applyDesign } from '../assets/js/design/runtime.js';
 
 /** This builder logs only fake test data and never constructs a network client. */
 function fixture(result = { data: { id: 1, design_theme: null }, error: null }) {
@@ -44,9 +45,38 @@ test('null, arrays, unknown presets and future versions safely use defaults', ()
   for (const input of [null, [], 'bad', { preset: 'unknown' }, { version: 99, preset: 'institutional' }]) assert.deepEqual(normalizeDesign(input), presetDesign());
 });
 test('preset reset returns fresh copies and never mutates another draft', () => {
-  const draft = presetDesign(); draft.primary = '#000000';
+  const draft = presetDesign(); draft.primary = '#000000'; draft.secondary = '#ffffff';
   assert.notEqual(draft.primary, presetDesign().primary);
+  assert.notEqual(draft.secondary, presetDesign().secondary);
   assert.ok(sameDesign(presetDesign(), normalizeDesign({})));
+});
+test('older designs preserve their custom primary color on secondary panels', () => {
+  for (const preset of Object.keys(PRESETS)) {
+    assert.equal(presetDesign(preset).secondary, PRESETS[preset].primary);
+    const legacy = { version: 1, preset, primary: '#AABBCC' };
+    assert.equal(normalizeDesign(legacy).secondary, '#aabbcc');
+    assert.ok(sameDesign(legacy, { ...legacy, secondary: '#aabbcc' }));
+  }
+});
+test('secondary colors normalize hex values and refuse arbitrary CSS', () => {
+  assert.equal(normalizeDesign({ secondary: '#ABCDEF' }).secondary, '#abcdef');
+  for (const secondary of [null, '#fff', 'red', 'url(remote)', '#ffffff;display:none', {}]) {
+    assert.equal(normalizeDesign({ primary: '#123456', secondary }).secondary, '#123456');
+  }
+  assert.equal(sameDesign(presetDesign(), { ...presetDesign(), secondary: '#ffffff' }), false);
+});
+test('shared runtime applies independent main, secondary, and accent contrast pairs', () => {
+  const properties = new Map();
+  const root = { dataset: {}, style: { setProperty: (key, value) => properties.set(key, value) } };
+  applyDesign({ primary: '#123456', secondary: '#ffffff', accent: '#abcdef' }, root);
+  assert.equal(properties.get('--primary'), '#123456');
+  assert.equal(properties.get('--secondary'), '#ffffff');
+  assert.equal(properties.get('--on-secondary'), '#000000');
+  assert.equal(properties.get('--accent'), '#abcdef');
+  applyDesign({ secondary: '#000000' }, root);
+  assert.equal(properties.get('--on-secondary'), '#ffffff');
+  applyDesign(undefined, root);
+  assert.equal(properties.get('--secondary'), presetDesign().secondary);
 });
 test('contrast text meets 4.5:1 for every RGB luminance sampled across the gamut', () => {
   for (let r = 0; r < 256; r += 17) for (let g = 0; g < 256; g += 17) for (let b = 0; b < 256; b += 17) {
@@ -73,14 +103,16 @@ test('missing settings singleton cannot become a fabricated published design', (
   assert.throws(() => designSnapshot({ id: 2 }), /not found/);
 });
 test('publish is admin-only and patches only design_theme, preserving legacy data', async () => {
-  const row = { id: 1, design_theme: { legacy: 'keep' } };
+  const row = { id: 1, design_theme: { legacy: 'keep', brgyweblitev3_covers: { version: 1, slides: [] } } };
   const { client, auth, log } = fixture({ data: row, error: null });
-  await createDesign(client, auth).publish(presetDesign('national-authority'), designSnapshot(row));
+  await createDesign(client, auth).publish({ ...presetDesign('national-authority'), secondary: '#abcdef' }, designSnapshot(row));
   assert.deepEqual(log[0], { roles: ['admin'] });
   const query = log[1]; assert.equal(query.table, 'site_settings');
   const update = query.steps.find(step => step[0] === 'update')[1];
   assert.deepEqual(Object.keys(update), ['design_theme']); assert.equal(update.design_theme.legacy, 'keep');
   assert.equal(update.design_theme.brgyweblitev3.preset, 'national-authority');
+  assert.equal(update.design_theme.brgyweblitev3.secondary, '#abcdef');
+  assert.deepEqual(update.design_theme.brgyweblitev3_covers, row.design_theme.brgyweblitev3_covers);
   assert.ok(query.steps.some(step => step[0] === 'eq' && step[1] === 'design_theme' && step[2] === JSON.stringify(row.design_theme)));
 });
 test('initial null theme uses IS NULL atomic comparison, never equality with null', async () => {

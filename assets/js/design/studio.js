@@ -47,7 +47,8 @@ export function mountStudio(root, { snapshot = { config: presetDesign() }, servi
   const tokens = el('section', '', { class: 'control-panel' });
   tokens.append(el('h2', '02 / Make it yours'));
   const inputs = {};
-  for (const [key, label] of [['primary', 'Main color'], ['accent', 'Accent color']]) {
+  // All three pickers share validation, draft, reset, and confirmed-publish behavior.
+  for (const [key, label] of [['primary', 'Main color'], ['secondary', 'Secondary color'], ['accent', 'Accent color']]) {
     const field = el('div', '', { class: 'color-field' });
     const caption = el('label', label, { for: `design-${key}` }); const value = el('output'); caption.append(value);
     const input = el('input', '', { id: `design-${key}`, type: 'color', value: draft[key] });
@@ -63,12 +64,17 @@ export function mountStudio(root, { snapshot = { config: presetDesign() }, servi
     hex.addEventListener('blur', () => commitHex(true));
     const colors = el('div', '', { class: 'cluster' }); colors.append(hex, input);
     inputs[key] = { input, value, hex }; field.append(caption, colors); tokens.append(field);
+    if (key === 'secondary') {
+      input.setAttribute('aria-describedby', 'secondary-color-help');
+      hex.setAttribute('aria-describedby', 'secondary-color-help');
+      tokens.append(el('p', 'Quick-links panel, footer, colored staff sidebar, and login side panel.', { id: 'secondary-color-help', class: 'color-help muted' }));
+    }
   }
   const grid = el('div', '', { class: 'control-grid' });
   for (const [key, label, options] of [
     ['font', 'Heading font', [['humanist', 'Humanist'], ['classic', 'Classic serif'], ['contemporary', 'Contemporary']]],
     ['corners', 'Corners', [['square', 'Square'], ['soft', 'Soft'], ['round', 'Rounded']]],
-    ['sidebar', 'Staff navigation', [['dark', 'Brand color'], ['light', 'Light']]],
+    ['sidebar', 'Staff navigation', [['dark', 'Secondary color'], ['light', 'Light']]],
     ['width', 'Page width', [['wide', 'Wide'], ['boxed', 'Boxed']]],
   ]) {
     const field = el('div'); const input = el('select', '', { id: `design-${key}` });
@@ -76,7 +82,7 @@ export function mountStudio(root, { snapshot = { config: presetDesign() }, servi
     input.addEventListener('change', () => { draft[key] = input.value; update(); }); inputs[key] = { input };
     field.append(el('label', label, { for: `design-${key}` }), input); grid.append(field);
   }
-  tokens.append(grid, el('p', 'Button text contrast is adjusted automatically. All CSS stays in one shared design system.', { class: 'muted' }));
+  tokens.append(grid, el('p', 'Button and colored-panel text contrast is adjusted automatically. All CSS stays in one shared design system.', { class: 'muted' }));
   const reset = el('button', 'Reset to Modern LGU default', { type: 'button' });
   reset.addEventListener('click', () => { draft = presetDesign(); update(); message.textContent = 'Default restored in preview only. Publish to make it live.'; });
   tokens.append(reset); controls.append(themes, tokens);

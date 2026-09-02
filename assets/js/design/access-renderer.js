@@ -28,7 +28,7 @@ export function accessSurface(mode, settings = {}, { preview = false } = {}) {
   }
   const submit = el('button', def.button, { type: 'submit', class: 'primary' }); submit.disabled = preview; form.append(submit);
   card.append(form, el('p', preview ? 'Preview only — form submissions are disabled.' : '', { id: 'status', role: 'status', 'aria-live': 'polite', class: 'studio-message' }));
-  if (mode === 'login') card.append(el('p', 'Gamitin ang dati mong email at password. Walang bagong System Admin account.', { class: 'muted' }), el('a', 'Apply as Content Admin', { href: 'signup.html' }));
+  if (mode === 'login') card.append(el('p', 'Use your existing email and password. Your System Admin account stays the same.', { class: 'muted' }), el('a', 'Apply as Content Admin', { href: 'signup.html' }));
   else card.append(el('a', 'Already have an account? Sign in', { href: 'login.html' }));
   main.append(card); root.append(aside, main); return root;
 }

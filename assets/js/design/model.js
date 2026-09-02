@@ -20,7 +20,7 @@ const choose = (value, allowed, fallback) => allowed.includes(value) ? value : f
 export function presetDesign(preset = DEFAULT_PRESET) {
   const key = Object.hasOwn(PRESETS, preset) ? preset : DEFAULT_PRESET;
   const def = PRESETS[key];
-  return { version: 1, preset: key, primary: def.primary, accent: def.accent, font: def.font, corners: def.corners, width: def.width, sidebar: def.sidebar };
+  return { version: 1, preset: key, primary: def.primary, secondary: def.primary, accent: def.accent, font: def.font, corners: def.corners, width: def.width, sidebar: def.sidebar };
 }
 
 /** Keep stored JSON backward-compatible while refusing unknown tokens, CSS, or URLs. */
@@ -28,8 +28,11 @@ export function normalizeDesign(input) {
   const source = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
   const base = presetDesign(source.preset);
   if (source.version !== undefined && source.version !== 1) return presetDesign();
+  const primary = validColor(source.primary) ? source.primary.toLowerCase() : base.primary;
   return { ...base,
-    primary: validColor(source.primary) ? source.primary.toLowerCase() : base.primary,
+    primary,
+    // Older version-1 designs used primary for these panels; preserve that appearance.
+    secondary: validColor(source.secondary) ? source.secondary.toLowerCase() : primary,
     accent: validColor(source.accent) ? source.accent.toLowerCase() : base.accent,
     font: choose(source.font, Object.keys(FONTS), base.font),
     corners: choose(source.corners, ['square', 'soft', 'round'], base.corners),
@@ -38,7 +41,7 @@ export function normalizeDesign(input) {
   };
 }
 
-/** Black/white contrast is derived, so bright custom button colors stay readable. */
+/** Black/white contrast is derived, so custom buttons and colored panels stay readable. */
 export function luminance(hex) {
   if (!validColor(hex)) throw new Error('Expected a six-digit hex color.');
   const channels = hex.slice(1).match(/../g).map(value => parseInt(value, 16) / 255)

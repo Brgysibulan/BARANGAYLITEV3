@@ -30,6 +30,8 @@ for (const file of files) {
   }
   if (file.endsWith('.html')) {
     const source = await readFile(file, 'utf8');
+    // Screen readers must receive the same English locale as the authored interface.
+    if (!/<html\b[^>]*\blang="en"/i.test(source)) throw new Error(`Set the interface language to English: ${file}`);
     if (/<style\b|\sstyle=/i.test(source)) throw new Error(`Inline styling is not allowed: ${file}`);
     const styles = [...source.matchAll(/<link\b[^>]*rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/g)];
     if (styles.length !== 1 || !styles[0][1].endsWith('assets/css/design-system.css')) throw new Error(`Use exactly one central stylesheet: ${file}`);

@@ -10,7 +10,7 @@ let singleton;
 export function getClient() {
   if (singleton) return singleton;
   const createClient = globalThis.supabase?.createClient;
-  if (!createClient) throw new Error('Hindi ma-load ang Supabase connection. Pakisubukang muli.');
+  if (!createClient) throw new Error('The Supabase connection could not be loaded. Please try again.');
   singleton = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     auth: {
       storageKey: AUTH_STORAGE_KEY,

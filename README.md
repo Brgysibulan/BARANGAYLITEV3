@@ -6,6 +6,8 @@ Logic-first continuation of `Brgysibulan/BRGYWEB-LITE`, using the **same existin
 
 The redesigned staff workspace now supports editable public content, real dashboard aggregates, ID records and downloadable QR files, up to five compressed homepage covers, site settings, Content Admin management, and measured file-storage/GitHub status. The shared Design Studio still provides five government layouts with confirmed admin-only publishing. Existing System Admin credentials and the original verification rules are unchanged.
 
+Design Studio includes main, secondary, and accent color pickers with matching hex inputs. The secondary color controls supporting panels while preserving older saved palettes. The authored interface is fully English; stored barangay content is not translated or modified.
+
 Public verification is at `verify.html`. Manual lookup requires ID number plus last name, as in the original website. QR codes use the existing record token and the permanent GitHub Pages address. No new backend/schema/RLS changes were deployed for this update. Billing, quota, bandwidth and database disk size are explicitly unavailable until a separately authorized provider integration exists.
 
 Writes run only after an explicit staff action. The application/activation screens reuse existing eligibility and role guards. All CSS remains in the central design system. Pinned local QR assets can be refreshed with `npm run vendor`; no external QR generation service receives ID tokens. See [Design Studio documentation](docs/DESIGN-STUDIO.md) and [debugging map](docs/DEBUGGING.md).

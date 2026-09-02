@@ -2,12 +2,13 @@
 
 ## Automated and read-only checks
 
-- 53 automated tests pass: existing account/data contracts, all five preset definitions, unsafe style input, fresh reset defaults, sampled text contrast, namespace preservation, admin-only writes, NULL/equality baseline filters, conflict/error responses, search, cover validation/concurrency, typed edit forms, unchanged ID rules, missing usage, XSS-safe rendering and independent QR decode round-trip.
-- Static validation passes: JavaScript syntax, module paths, debugging headers, all HTML script references, exactly one central stylesheet per shell, and no DOM/presentation side effects in data/auth services.
+- 59 automated tests pass: existing account/data contracts, all five preset definitions, unsafe style input, fresh reset defaults, sampled text contrast, namespace preservation, admin-only writes, NULL/equality baseline filters, conflict/error responses, search, cover validation/concurrency, typed edit forms, unchanged ID rules, missing usage, XSS-safe rendering and independent QR decode round-trip.
+- The added secondary picker has unit coverage for old-theme compatibility, unsafe/invalid colors, independent runtime contrast pairs, picker/hex synchronization, preview messages, discard/reset, and confirmation-only publishing. English empty/login copy and unchanged stored content are also tested.
+- Static validation passes: JavaScript syntax, module paths, debugging headers, all HTML script references, English language metadata on every HTML shell, exactly one central stylesheet per shell, and no DOM/presentation side effects in data/auth services.
 - Live read-only checks pass for the existing settings/theme fields, baseline filter, all eight public content modules, private-table anonymous restrictions, and pinned Supabase SDK.
 - Read-only account verification still finds the existing two Auth users and one active System Admin. The live design field remains unchanged (NULL).
 
-## Browser checks performed
+## Earlier browser checks performed
 
 - Switched all five layouts and inspected their distinct public section orders.
 - Public mobile preview and all five other preview screen types fit the 390px frame (375px content viewport with scrollbar), with no horizontal content overflow in the measured previews.
@@ -20,4 +21,4 @@
 
 ## Not claimed as verified
 
-No authenticated live publish, new application, account activation/password update, invitation email delivery, or production hosting deployment was performed. These need owner approval and a suitable account/session. Test results are not a guarantee of zero defects in every device or environment.
+No authenticated live theme publish, new application, account activation/password update, or invitation email delivery was performed. These need owner approval and a suitable account/session. The secondary picker was tested with the mocked DOM, not a new browser interaction session. Website code is published separately through the existing GitHub Pages workflow. Test results are not a guarantee of zero defects in every device or environment.

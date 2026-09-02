@@ -27,7 +27,7 @@ function start() {
   // Reuse a valid V3 session, but do not race a newly submitted login form.
   auth.currentStaff().then(staff => {
     if (staff && !submitting) location.replace(destination(staff.profile.role));
-  }).catch(() => { status.textContent = 'Mag-sign in gamit ang existing account.'; });
+  }).catch(() => { status.textContent = 'Sign in with your existing account.'; });
   form.addEventListener('submit', async event => {
     event.preventDefault();
     if (submitting) return;
@@ -40,7 +40,7 @@ function start() {
       form.elements.password.value = '';
       location.replace(destination(staff.profile.role));
     } catch (error) {
-      status.textContent = error.message || 'Hindi makapag-sign in.';
+      status.textContent = error.message || 'Unable to sign in. Please try again.';
       form.elements.password.value = '';
       button.disabled = false;
       submitting = false;
