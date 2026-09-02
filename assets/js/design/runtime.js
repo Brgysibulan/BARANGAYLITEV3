@@ -4,6 +4,7 @@
  * Debug: inspect the html data-theme attributes; only validated CSS variables are written.
  */
 import { normalizeDesign, contrastText, FONTS } from './model.js';
+import { designReady, designFailed } from './boot.js';
 
 /** No stylesheet injection: every page uses the same tokens and layout selectors. */
 export function applyDesign(value, root = document.documentElement) {
@@ -28,18 +29,23 @@ export async function watchDesign(service, onChange = () => {}) {
   let disposed = false;
   let running = false;
   let previous = '';
-  const refresh = async () => {
-    if (disposed || running || document.hidden) return;
+  const refresh = async (initial = false) => {
+    // A background-opened tab still needs its first design; only later polls skip hidden tabs.
+    if (disposed || running || (!initial && document.hidden)) return;
     running = true;
     try {
       const snapshot = await service.read();
       if (disposed) return;
       const next = JSON.stringify(snapshot.config);
-      if (next !== previous) { previous = next; applyDesign(snapshot.config); onChange(snapshot.config); }
+      if (next !== previous) {
+        applyDesign(snapshot.config); onChange(snapshot.config); previous = next;
+      }
+      // Reveal in the same task, after the caller has rendered the matching section order.
+      designReady();
     } finally { running = false; }
   };
-  // A rejected first read is reported to the caller; background failures never erase a design.
-  try { await refresh(); } catch (error) { applyDesign(); onChange(null, error); }
+  // Never show a guessed default on failure: it would flash again when the saved theme arrives.
+  try { await refresh(true); } catch (error) { designFailed(); onChange(null, error); }
   const background = () => refresh().catch(() => {});
   const timer = setInterval(background, 60000);
   window.addEventListener('focus', background);

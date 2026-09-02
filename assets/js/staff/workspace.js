@@ -9,6 +9,7 @@ import { CONTENT } from '../data/contracts.js';
 import { element as el } from '../core/dom.js';
 import { startRouter } from '../core/router.js';
 import { applyDesign, watchDesign } from '../design/runtime.js';
+import { designFailed } from '../design/boot.js';
 import { mountStudio } from '../design/studio.js';
 import { mountContent } from './content-screen.js';
 import { mountDashboard, mountUsage } from './dashboard.js';
@@ -84,5 +85,5 @@ export async function startWorkspace(workspace) {
         else status.textContent = 'Unable to load: ' + error.message;
       }
     });
-  } catch (error) { lock(error.message || 'Unable to verify your staff account.'); }
+  } catch (error) { if (!services) designFailed(); lock(error.message || 'Unable to verify your staff account.'); }
 }

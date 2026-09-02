@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-design-state="loading">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,8 +8,15 @@
   <meta name="description" content="Verify a Barangay Sibulan ID using the existing manual lookup or QR code.">
   <title>Verify ID — Barangay Sibulan</title>
   <link rel="stylesheet" href="assets/css/design-system.css">
+  <script type="module" src="assets/js/design/boot.js"></script>
 </head>
 <body>
+  <!-- Neutral first paint; design/boot.js releases this only after the correct design renders. -->
+  <div class="design-loader" role="status" aria-live="polite">
+    <p data-design-message>Loading website design…</p>
+    <button type="button" data-design-retry>Reload page</button>
+    <noscript>Enable JavaScript to load this website.</noscript>
+  </div>
   <!-- Public ID verification shell. No private record lists are requested. -->
   <a class="skip-link" href="#verification-main">Skip to verification</a>
   <p id="status" class="notice" role="status">Loading verification…</p>

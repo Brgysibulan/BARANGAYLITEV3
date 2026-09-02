@@ -1,5 +1,13 @@
 # Troubleshooting guide
 
+## Previous/default design flashes during reload
+
+Live HTML shells and `preview.html` start with `data-design-state="loading"`. The central stylesheet hides the themed content and displays a small neutral loading notice. `design/boot.js` is dependency-free and loads before the SDK, so a missing entry script gets a retry message after 12 seconds instead of an indefinite blank page. A failed theme read does not silently reveal a guessed preset.
+
+`design/runtime.js` applies the saved tokens, runs the layout callback, and only then calls `designReady()` in the same task. The initial read also runs in a hidden tab; subsequent background reads still skip hidden tabs and preserve the last working design on failure. Public and verification pages re-arm the gate when restored from Back/Forward cache. The preview waits for its parent's origin/source/channel-validated draft before its first render; it no longer paints Modern LGU before receiving that draft.
+
+This changes display timing only. It does not save designs, add browser-storage caches, or change existing accounts, records, maintenance, or permissions. Preview-only drafts remain in memory; a design must be confirmed with **Publish Everywhere** in the authenticated System Admin studio to survive a reload. `tests/design-loading.test.js` covers deferred/failed theme reads, hidden tabs, recovery, real public/verification controllers, HTML gates, and the preview handshake without production requests.
+
 ## Page Settings and maintenance
 
 The standalone `design-studio.html` and its iframe are a sample appearance preview, not live staff editing. Use **Open live Page Settings** or sign in at `login.html?next=settings`. The existing active System Admin account can edit `admin/index.html#settings`. Content Admins still cannot change system settings; the live profile and existing RLS enforce this.

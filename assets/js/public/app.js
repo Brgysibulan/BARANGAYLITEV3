@@ -8,12 +8,15 @@ import { CONTENT } from '../data/contracts.js';
 import { element as el } from '../core/dom.js';
 import { startRouter } from '../core/router.js';
 import { watchDesign } from '../design/runtime.js';
+import { beginDesignLoad, designFailed } from '../design/boot.js';
 import { presetDesign } from '../design/model.js';
 import { publicHome, publicHeader, publicFooter, contentCard, SECTIONS } from '../design/public-renderer.js';
 import { watchAvailability, maintenanceSurface } from './availability.js';
 
 /** Maintenance and published flags stay authoritative regardless of the selected theme. */
 export async function startPublicPage({ services: injectedServices } = {}) {
+  // Also re-arm after a Back/Forward-cache restore before rechecking the published design.
+  beginDesignLoad();
   const root = document.querySelector('#public-root');
   const status = document.querySelector('#status');
   let config = presetDesign();
@@ -107,13 +110,14 @@ export async function startPublicPage({ services: injectedServices } = {}) {
     stopDesign = await watchDesign(services.design, (next, error) => {
       if (disposed) return;
       if (next) config = next;
-      if (error) status.textContent = 'Design unavailable. Showing default appearance; existing content is unchanged.';
+      if (error) status.textContent = 'The saved design could not load. Reload this page to try again.';
       // A late theme response must never put public content back over a maintenance notice.
       if (settings?.maintenance_mode === false && currentRoute === 'home' && homeData) showHome();
     });
     if (disposed) stopDesign();
   } catch (error) {
     if (disposed) return;
+    designFailed();
     status.textContent = 'Unable to load barangay information: ' + error.message;
     root.replaceChildren(el('a', 'Retry', { href: 'index.html', class: 'button' }), el('a', 'Staff login', { href: 'login.html', class: 'button' }));
   }

@@ -1,13 +1,20 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-design-state="loading">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
   <title>System Admin — BRGYWEBLITEV3</title>
   <link rel="stylesheet" href="../assets/css/design-system.css">
+  <script type="module" src="../assets/js/design/boot.js"></script>
 </head>
 <body data-workspace="admin" class="workspace">
+  <!-- Neutral first paint; design/boot.js releases this only after the correct design renders. -->
+  <div class="design-loader" role="status" aria-live="polite">
+    <p data-design-message>Loading website design…</p>
+    <button type="button" data-design-retry>Reload page</button>
+    <noscript>Enable JavaScript to load this website.</noscript>
+  </div>
   <!-- System Admin shell. Behavior: assets/js/admin/app.js -> staff/workspace.js. -->
   <!-- Navigation stays hidden until the existing account and live role are verified. -->
   <a href="#main" class="skip-link">Skip to content</a>

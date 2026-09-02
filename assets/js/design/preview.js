@@ -4,6 +4,7 @@
  * Debug: only same-origin messages from the embedding parent with its channel are accepted.
  */
 import { applyDesign } from './runtime.js';
+import { designReady } from './boot.js';
 import { publicHome } from './public-renderer.js';
 import { SAMPLE_SETTINGS, SAMPLE_CONTENT } from './sample.js';
 import { accessSurface } from './access-renderer.js';
@@ -27,8 +28,9 @@ const render = config => {
     const cards = el('div', '', { class: 'cards' }); SAMPLE_CONTENT[route].forEach(row => cards.append(contentCard(route, row))); main.append(cards);
     page.append(publicHeader(SAMPLE_SETTINGS, route), main, publicFooter(SAMPLE_SETTINGS, { preview: true })); root.replaceChildren(page);
   }
+  designReady();
 };
-render();
+// Wait for the parent's current draft; painting a default here causes a preset/color flash.
 window.addEventListener('message', event => {
   if (event.origin !== location.origin || event.source !== parent || !channel || event.data?.channel !== channel || event.data?.type !== 'brgy-design-preview') return;
   if (surface !== event.data.surface) route = 'home';

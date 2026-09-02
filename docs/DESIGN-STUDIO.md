@@ -36,6 +36,8 @@ The update is guarded by active-admin authorization and existing database RLS. A
 
 All live shells read the same config. Already-open pages refresh on focus or within 60 seconds; offline pages retain their last successful appearance. Public content still uses explicit published/active predicates even when a staff account is signed in.
 
+On reload, a neutral notice stays visible until the saved colors and layout have both been applied. A failed initial read offers **Reload page**, not a guessed default design. The isolated preview likewise waits for the current draft message before rendering. This first-paint safeguard is in `design/boot.js` and `design/runtime.js`; it does not persist or publish unfinished drafts.
+
 ## Debugging and verification
 
 - Wrong section order: check `PRESETS[config.preset].sectionOrder`, then `public-renderer.js`.

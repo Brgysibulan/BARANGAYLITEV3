@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-design-state="loading">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Barangay Sibulan public information, services, announcements, and transparency documents.">
@@ -7,8 +7,15 @@
   <meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="BRGYWEBLITEV3 · Barangay Sibulan"><meta name="twitter:description" content="Public information, services, announcements, and transparency documents."><meta name="twitter:image" content="https://brgysibulan.github.io/BARANGAYLITEV3/assets/images/social-card.png">
   <title>Barangay Sibulan — BRGYWEBLITEV3</title>
   <link rel="stylesheet" href="assets/css/design-system.css">
+  <script type="module" src="assets/js/design/boot.js"></script>
 </head>
 <body>
+  <!-- Neutral first paint; design/boot.js releases this only after the correct design renders. -->
+  <div class="design-loader" role="status" aria-live="polite">
+    <p data-design-message>Loading website design…</p>
+    <button type="button" data-design-retry>Reload page</button>
+    <noscript>Enable JavaScript to load this website.</noscript>
+  </div>
   <!-- Public shell: public/app.js reads published data; design/public-renderer.js lays it out. -->
   <a class="skip-link" href="#public-main">Skip to content</a>
   <p id="status" class="container" role="status" aria-live="polite">Loading barangay information…</p>

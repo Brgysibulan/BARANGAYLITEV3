@@ -9,6 +9,7 @@ import { element as el } from '../core/dom.js';
 import { extractQrToken } from '../data/verification.js';
 import { fullName } from '../data/id-model.js';
 import { watchDesign } from '../design/runtime.js';
+import { beginDesignLoad, designFailed } from '../design/boot.js';
 import { publicHeader } from '../design/public-renderer.js';
 import { watchAvailability, maintenanceSurface } from './availability.js';
 
@@ -83,6 +84,7 @@ export function mountVerification(root, service, { checkAvailability = async () 
 }
 /** Mount the live page behind availability checks; injected services are used only by tests. */
 export async function startVerificationPage({ services: injectedServices } = {}) {
+  beginDesignLoad();
   const root = document.querySelector('#verify-root'), status = document.querySelector('#status');
   let stopAvailability, stopDesign, currentCleanup, disposed = false;
   const cleanup = () => { disposed = true; stopAvailability?.(); stopDesign?.(); currentCleanup?.(); };
@@ -103,7 +105,7 @@ export async function startVerificationPage({ services: injectedServices } = {})
     });
     await stopAvailability.refresh(); if (disposed) return;
     stopDesign = await watchDesign(services.design); if (disposed) stopDesign();
-  } catch (error) { if (!disposed) status.textContent = 'Unable to load verification: ' + error.message; }
+  } catch (error) { if (!disposed) { designFailed(); status.textContent = 'Unable to load verification: ' + error.message; } }
   return cleanup;
 }
 if (typeof document !== 'undefined' && document.querySelector('#verify-root')) {

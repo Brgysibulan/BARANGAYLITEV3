@@ -7,6 +7,7 @@ import { getServices } from './core/services.js';
 import { accessSurface } from './design/access-renderer.js';
 import { brand } from './design/public-renderer.js';
 import { watchDesign } from './design/runtime.js';
+import { designFailed } from './design/boot.js';
 async function start() {
   const mode = document.body.dataset.access;
   document.querySelector('#access-root').replaceChildren(accessSurface(mode));
@@ -22,7 +23,7 @@ async function start() {
     services.settings.read().then(settings => document.querySelector('.access-aside .brand')?.replaceWith(brand(settings))).catch(() => {});
     if (mode === 'activation') await services.auth.requireStaff(['editor']);
     button.disabled = false;
-  } catch (error) { status.textContent = mode === 'activation' ? 'An approved Content Admin invitation session is required. Open your valid invitation link or contact the System Admin.' : error.message; return; }
+  } catch (error) { if (!services) designFailed(); status.textContent = mode === 'activation' ? 'An approved Content Admin invitation session is required. Open your valid invitation link or contact the System Admin.' : error.message; return; }
   form.addEventListener('submit', async event => {
     event.preventDefault(); if (busy) return;
     busy = true; button.disabled = true; status.textContent = 'Submitting…';

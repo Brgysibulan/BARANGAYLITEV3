@@ -6,6 +6,7 @@
 import { getServices } from './core/services.js';
 import { accessSurface } from './design/access-renderer.js';
 import { watchDesign } from './design/runtime.js';
+import { designFailed } from './design/boot.js';
 import { brand } from './design/public-renderer.js';
 import { staffDestination } from './core/navigation.js';
 
@@ -22,7 +23,7 @@ function start() {
     // Update only identity, never re-render a form after the user starts typing.
     services.settings.read().then(settings => document.querySelector('.access-aside .brand')?.replaceWith(brand(settings))).catch(() => {});
   }
-  catch (error) { status.textContent = error.message; button.disabled = true; return; }
+  catch (error) { designFailed(); status.textContent = error.message; button.disabled = true; return; }
   const requested = new URLSearchParams(location.search).get('next');
   const destination = role => staffDestination(role, requested);
   let submitting = false;
