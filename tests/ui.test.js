@@ -8,10 +8,11 @@ import assert from 'node:assert/strict';
 import { parseHTML } from 'linkedom';
 import { editorDialog, fieldsForm, recordTable, labelFor, confirmationDialog, detailsDialog } from '../assets/js/staff/ui.js';
 import { verificationResult } from '../assets/js/public/verify.js';
+import { editFields } from '../assets/js/staff/content-screen.js';
 import { mountStudio } from '../assets/js/design/studio.js';
 import { presetDesign } from '../assets/js/design/model.js';
 import { accessSurface } from '../assets/js/design/access-renderer.js';
-import { contentCard, publicHome, publicFooter } from '../assets/js/design/public-renderer.js';
+import { contentCard, publicHome, publicFooter, publicHeader } from '../assets/js/design/public-renderer.js';
 import { CAROUSEL_INTERVAL_MS } from '../assets/js/public/carousel.js';
 import { showRecords } from '../assets/js/core/dom.js';
 const { window } = parseHTML('<!doctype html><html><body></body></html>');
@@ -50,6 +51,29 @@ test('tables display safe content and empty states', () => {
   const table = recordTable([{ title: '<img src=x onerror=bad>' }], [{ key: 'title' }], () => []);
   assert.equal(table.querySelector('img'), null);
   assert.equal(table.querySelector('td').getAttribute('data-label'), 'Title');
+});
+test('public navigation exposes the approved hierarchy and Admin Portal choices', () => {
+  const header = publicHeader({ barangay_name: 'Sibulan' }, 'functionaries');
+  assert.match(header.textContent, /HomeNews & UpdatesServicesAboutDirectoryAdmin Portal/);
+  assert.match(header.textContent, /Verify Barangay IDRequest AppointmentDownloadable Forms/);
+  assert.match(header.textContent, /Barangay OfficialsBarangay StaffBarangay Functionaries/);
+  assert.match(header.textContent, /System Admin LoginContent Admin Login/);
+  assert.equal(header.textContent.includes('Staff portal'), false);
+  assert.equal(header.querySelector('summary[aria-current=page]').textContent, 'Directory');
+});
+test('directory CRUD offers fixed functionary categories and a photo-or-icon upload', () => {
+  const fields = editFields('directory_entries');
+  const category = fields.find(field => field.key === 'category');
+  const upload = fields.find(field => field.key === 'upload');
+  assert.ok(category.options.includes('BHW'));
+  assert.ok(category.options.includes('Barangay Camp Manager'));
+  assert.match(upload.label, /photo or icon/i);
+});
+test('directory cards use a neutral icon when no uploaded photo is available', () => {
+  const card = contentCard('directory_entries', { category: 'BHW', name: 'Sample Functionary', role_title: 'Barangay Health Worker' });
+  assert.ok(card.classList.contains('directory-card'));
+  assert.ok(card.querySelector('.directory-icon'));
+  assert.equal(card.querySelector('img'), null);
 });
 test('website confirmation dialog resolves without a browser confirm popup', async () => {
   const decision = confirmationDialog({ title: 'Delete service?', description: 'This removes the record.', confirmLabel: 'Delete record', destructive: true });
