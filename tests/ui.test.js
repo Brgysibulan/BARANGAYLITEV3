@@ -54,7 +54,8 @@ test('tables display safe content and empty states', () => {
 });
 test('public navigation exposes the approved hierarchy and Admin Portal choices', () => {
   const header = publicHeader({ barangay_name: 'Sibulan' }, 'functionaries');
-  assert.match(header.textContent, /HomeNews & UpdatesServicesAboutDirectoryAdmin Portal/);
+  const mainLabels = [...header.querySelector('.public-nav .container').children].map(node => node.tagName === 'A' ? node.textContent : node.querySelector('summary').textContent);
+  assert.deepEqual(mainLabels, ['Home', 'News & Updates', 'Services', 'About', 'Directory', 'Admin Portal']);
   assert.match(header.textContent, /Verify Barangay IDRequest AppointmentDownloadable Forms/);
   assert.match(header.textContent, /Barangay OfficialsBarangay StaffBarangay Functionaries/);
   assert.match(header.textContent, /System Admin LoginContent Admin Login/);
