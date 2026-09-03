@@ -63,27 +63,44 @@ export function contentCard(table, row) {
   return card;
 }
 
-/** Map sits above the footer in all layouts; only a known Google Maps embed may be framed. */
+/** Map and structured footer share existing settings; no contact or link data is invented. */
 export function publicFooter(settings, { preview = false } = {}) {
   const fragment = document.createDocumentFragment();
   const map = el('section', '', { class: 'map-section' });
   const layout = el('div', '', { class: 'container map-layout' });
-  const contact = el('div');
-  contact.append(el('p', 'WE ARE HERE TO HELP', { class: 'eyebrow' }), el('h2', 'Visit your barangay hall'), el('p', settings.address || [settings.barangay_name, settings.municipality_city, settings.province].filter(Boolean).join(', ')));
-  if (settings.contact_number) contact.append(el('p', settings.contact_number));
-  if (settings.email) contact.append(el('p', settings.email));
+  const contact = el('div', '', { class: 'map-contact' });
+  contact.append(el('p', 'BARANGAY PUBLIC ASSISTANCE', { class: 'eyebrow' }), el('h2', 'Visit your barangay hall'), el('p', settings.address || [settings.barangay_name, settings.municipality_city, settings.province].filter(Boolean).join(', ')));
+  if (settings.contact_number) contact.append(el('p', settings.contact_number, { class: 'map-contact-line' }));
+  if (settings.email) contact.append(el('p', settings.email, { class: 'map-contact-line' }));
   const slot = el('div', '', { class: 'map-slot' });
   const source = https(settings.map_embed_url);
   const url = source && new URL(source);
   if (url && ['www.google.com', 'maps.google.com'].includes(url.hostname) && url.pathname.startsWith('/maps') && !preview) slot.append(el('iframe', '', { src: url.href, title: 'Barangay hall map', loading: 'lazy', referrerpolicy: 'no-referrer', sandbox: 'allow-scripts allow-same-origin' }));
   else slot.append(el('p', preview ? 'Barangay hall map · preview placeholder' : 'Map will appear when an approved map link is configured.'));
   layout.append(contact, slot); map.append(layout);
+
   const footer = el('footer', '', { class: 'public-footer' });
-  const inner = el('div', '', { class: 'container' });
-  const title = el('div'); title.append(el('h3', `Barangay ${settings.barangay_name || 'Website'}`), el('p', 'Public service. Open information. A connected community.'));
-  const links = el('div', '', { class: 'cluster' });
-  [['#forms', 'Forms'], ['#pages', 'About the barangay'], ['#gallery_items', 'Gallery'], ['login.html', 'Staff login']].forEach(([href, label]) => links.append(el('a', label, { href })));
-  inner.append(title, links); footer.append(inner); fragment.append(map, footer); return fragment;
+  const main = el('div', '', { class: 'footer-main container' });
+  const identity = el('section', '', { class: 'footer-identity' });
+  identity.append(brand(settings, '#home'), el('p', 'Official information, public services, and community updates from your Barangay Local Government Unit.'));
+
+  const linkColumn = (title, items) => {
+    const nav = el('nav', '', { class: 'footer-column', 'aria-label': title });
+    nav.append(el('h3', title));
+    const list = el('ul');
+    items.forEach(([href, label]) => { const item = el('li'); item.append(el('a', label, { href })); list.append(item); });
+    nav.append(list); return nav;
+  };
+  const explore = linkColumn('Explore', [['#home', 'Home'], ['#pages', 'About the barangay'], ['#gallery_items', 'Community gallery']]);
+  const information = linkColumn('Public information', [['#announcements', 'News & advisories'], ['#officials', 'Barangay officials'], ['#disclosures', 'Transparency & reports']]);
+  const services = linkColumn('Resident services', [['#services', 'Barangay services'], ['#forms', 'Downloadable forms'], ['verify.html', 'Verify Barangay ID'], ['#directory_entries', 'Contact directory']]);
+  main.append(identity, explore, information, services);
+
+  const bottom = el('div', '', { class: 'footer-bottom' });
+  const bottomInner = el('div', '', { class: 'container' });
+  bottomInner.append(el('p', `Barangay Local Government Unit of ${settings.barangay_name || 'the community'}`), el('p', [settings.municipality_city, settings.province].filter(Boolean).join(' · ') || 'Official public information website'));
+  bottom.append(bottomInner); footer.append(main, bottom);
+  fragment.append(map, footer); return fragment;
 }
 
 /** Layout-specific hero and DOM section order make presets genuinely different layouts. */
