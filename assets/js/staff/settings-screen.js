@@ -4,7 +4,7 @@
  * Debug: settings errors keep the draft open; cover conflicts require reloading the baseline.
  */
 import { element as el } from '../core/dom.js';
-import { heading, button, editorDialog, labelFor } from './ui.js';
+import { heading, button, editorDialog, confirmationDialog, labelFor } from './ui.js';
 import { optimizeImage } from '../media/images.js';
 import { formatBytes } from '../data/usage.js';
 import { MAINTENANCE_DEFAULTS } from '../data/maintenance.js';
@@ -50,7 +50,13 @@ export function mountSettings(root, services, isCurrent) {
     actions.append(button(enabled ? 'Disable maintenance mode' : 'Enable maintenance mode', async () => {
       if (busy || !active()) return;
       const next = !enabled;
-      if (!confirm(next ? 'Enable maintenance mode? Public pages and ID verification will be paused. Staff access stays available.' : 'Disable maintenance mode and reopen the public website?')) return;
+      const confirmed = await confirmationDialog({
+        title: next ? 'Enable maintenance mode?' : 'Reopen the public website?',
+        description: next ? 'Public pages and ID verification will be paused. Staff access stays available.' : 'Maintenance mode will be disabled and all public pages will become available again.',
+        confirmLabel: next ? 'Enable maintenance' : 'Reopen website',
+        destructive: next,
+      });
+      if (!confirmed || !active()) return;
       // A toggle patches only the boolean; empty notice text can never prevent switching OFF.
       busy = true; controlsDisabled(true); message.textContent = next ? 'Enabling maintenance…' : 'Reopening the public website…';
       try {
@@ -88,8 +94,10 @@ export function mountSettings(root, services, isCurrent) {
 export function mountCovers(root, services, isCurrent) {
   let baseline, slides = [], disposed = false, dirty = false, busy = false;
   const temporary = new Set(); const message = el('p', '', { role: 'status', class: 'module-message' }); const list = el('div', '', { class: 'cover-grid' });
-  const publish = button('Publish cover photos', save, true); const reload = button('Reload saved photos', () => { if (!dirty || confirm('Discard unsaved cover changes?')) load(); });
-  heading(root, 'Homepage cover photos', 'Up to five compressed images. Reorder them here; residents can pause or step through the slideshow.', [reload, publish]);
+  const publish = button('Publish cover photos', save, true); const reload = button('Reload saved photos', async () => {
+    if (!dirty || await confirmationDialog({ title: 'Discard cover changes?', description: 'Your selected photos, order, descriptions, and captions will return to the last published version.', confirmLabel: 'Discard changes', destructive: true })) load();
+  });
+  heading(root, 'Homepage cover photos', 'Up to five compressed images. Reorder them here; the public hero changes automatically every five seconds and also advances when clicked.', [reload, publish]);
   const add = el('input', '', { id: 'cover-upload', type: 'file', accept: 'image/jpeg,image/png,image/webp,image/gif', multiple: '' }); const addLabel = el('label', '+ Select cover photos', { for: 'cover-upload' });
   const uploader = el('div', '', { class: 'upload-zone' }); uploader.append(addLabel, add, el('small', 'Maximum 5 photos. Up to 15 MB input each; automatically resized before upload. GIFs become still covers.')); root.append(uploader, message, list);
   const beforeUnload = event => { if (dirty || busy) { event.preventDefault(); event.returnValue = ''; } }; window.addEventListener('beforeunload', beforeUnload);
@@ -126,7 +134,12 @@ export function mountCovers(root, services, isCurrent) {
   async function save() {
     if (busy || !baseline) return;
     if (slides.some(slide => !slide.alt.trim())) { message.textContent = 'Please add a photo description to every cover.'; return; }
-    if (!confirm(`Publish ${slides.length} cover photos to the public homepage?`)) return;
+    const confirmed = await confirmationDialog({
+      title: 'Publish homepage covers?',
+      description: `${slides.length} cover photo${slides.length === 1 ? '' : 's'} will replace the currently published slideshow order.`,
+      confirmLabel: 'Publish covers',
+    });
+    if (!confirmed || disposed || !isCurrent()) return;
     setBusy(true); message.textContent = 'Compressing and saving cover photos…';
     try {
       for (const slide of slides) if (slide.file) { const image = await optimizeImage(slide.file); const uploaded = await services.storage.upload('branding-media', image); slide.url = uploaded.url; delete slide.file; }
