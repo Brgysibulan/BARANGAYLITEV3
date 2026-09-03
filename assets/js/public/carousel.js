@@ -1,7 +1,7 @@
 /**
- * Purpose: accessible cover slideshow with only the current photo requested from Storage.
- * Depends on: validated public cover slides, native timers and shared CSS; no carousel library.
- * Debug: pause/hidden/reduced-motion prevent automatic movement; call dispose when leaving home.
+ * Purpose: accessible hero-cover slideshow and background refresh for saved public photos.
+ * Depends on: the existing covers service, validated slides, native timers and shared CSS.
+ * Debug: pause/hidden/reduced-motion prevent movement; focus/poll reads refresh dashboard changes.
  */
 import { element as el } from '../core/dom.js';
 export function createCarousel(slides, { autoplay = true } = {}) {
@@ -22,4 +22,31 @@ export function createCarousel(slides, { autoplay = true } = {}) {
   show(0);
   const timer = slides.length > 1 && autoplay ? setInterval(() => { if (!paused && !hovered && !focused && !document.hidden && root.isConnected) show(index + 1); }, 6000) : null;
   return { element: root, dispose: () => { if (timer) clearInterval(timer); } };
+}
+
+/** Keep an open homepage aligned with the existing dashboard record without a second cache/store. */
+export function watchCovers(service, onChange, { intervalMs = 60000 } = {}) {
+  let disposed = false, pending, previous;
+  async function refresh() {
+    // Deduplication prevents focus and the periodic timer from issuing the same read together.
+    if (disposed) return [];
+    if (pending) return pending;
+    pending = (async () => {
+      const snapshot = await service.read();
+      if (disposed) return [];
+      const slides = Array.isArray(snapshot?.slides) ? snapshot.slides : [];
+      const signature = JSON.stringify(slides);
+      if (signature !== previous) { previous = signature; onChange(slides); }
+      return slides;
+    })();
+    try { return await pending; } finally { pending = undefined; }
+  }
+  // A failed background refresh retains the last known working hero until the next safe retry.
+  const visibleRefresh = () => { if (!document.hidden) void refresh().catch(() => {}); };
+  const timer = setInterval(visibleRefresh, intervalMs);
+  window.addEventListener('focus', visibleRefresh);
+  document.addEventListener('visibilitychange', visibleRefresh);
+  const stop = () => { disposed = true; clearInterval(timer); window.removeEventListener('focus', visibleRefresh); document.removeEventListener('visibilitychange', visibleRefresh); };
+  stop.refresh = refresh;
+  return stop;
 }
