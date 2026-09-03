@@ -1,7 +1,7 @@
 /**
  * Purpose: show the selected public layout using only existing published Supabase records.
- * Depends on: service container, shared design renderers/runtime, and hash router.
- * Debug: section failures are visible; sample data is never loaded by this entry point.
+ * Depends on: service container, shared design renderers/runtime, cover watcher, and hash router.
+ * Debug: section failures are visible; cover refreshes read the existing dashboard record only.
  */
 import { getServices } from '../core/services.js';
 import { CONTENT } from '../data/contracts.js';
@@ -12,6 +12,7 @@ import { beginDesignLoad, designFailed } from '../design/boot.js';
 import { presetDesign } from '../design/model.js';
 import { publicHome, publicHeader, publicFooter, contentCard, SECTIONS } from '../design/public-renderer.js';
 import { watchAvailability, maintenanceSurface } from './availability.js';
+import { watchCovers } from './carousel.js';
 
 /** Maintenance and published flags stay authoritative regardless of the selected theme. */
 export async function startPublicPage({ services: injectedServices } = {}) {
@@ -25,12 +26,17 @@ export async function startPublicPage({ services: injectedServices } = {}) {
   let currentRoute;
   let homeErrors = {};
   let covers = [], homeCleanup;
-  let stopAvailability, stopRouter, stopDesign, disposed = false;
+  let stopAvailability, stopCovers, stopRouter, stopDesign, disposed = false;
   const showHome = () => { homeCleanup?.(); const home = publicHome(settings, homeData, config, { errors: homeErrors, covers }); root.replaceChildren(home); homeCleanup = home.dispose; };
-  const cleanup = () => { disposed = true; stopAvailability?.(); stopRouter?.(); stopDesign?.(); homeCleanup?.(); };
+  const cleanup = () => { disposed = true; stopAvailability?.(); stopCovers?.(); stopRouter?.(); stopDesign?.(); homeCleanup?.(); };
   window.addEventListener('pagehide', cleanup, { once: true });
   try {
     const services = injectedServices || getServices();
+    stopCovers = watchCovers(services.covers, next => {
+      covers = next;
+      // Rebuild only the active homepage; its prior carousel timer is disposed by showHome().
+      if (settings?.maintenance_mode === false && currentRoute === 'home' && homeData) showHome();
+    });
     document.querySelector('.skip-link')?.addEventListener('click', event => { event.preventDefault(); document.querySelector('#public-main')?.focus(); });
     const openPublic = () => { stopRouter = startRouter(async (route, isCurrent) => {
       // Each public navigation checks availability before requesting any content rows.
@@ -40,7 +46,9 @@ export async function startPublicPage({ services: injectedServices } = {}) {
       currentRoute = route; status.textContent = 'Loading published information…';
       try {
         if (route === 'home') {
-          try { const saved = await services.covers.read(); if (!isCurrent()) return; covers = saved.slides; }
+          // Always start from the dashboard's current saved cover record; no hardcoded hero path.
+          homeData = null;
+          try { covers = await stopCovers.refresh(); if (!isCurrent()) return; }
           catch { covers = []; }
           if (!isCurrent()) return;
           const results = await Promise.all(Object.keys(CONTENT).map(async table => {
