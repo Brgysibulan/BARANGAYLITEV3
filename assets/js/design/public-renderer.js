@@ -70,9 +70,22 @@ export function publicHeader(settings, route = 'home') {
 /** Cards retain module-specific information; no invented dates, counts, processing details, or contacts. */
 export function contentCard(table, row) {
   const directory = table === 'directory_entries';
+  const personnelPhoto = table === 'officials' || directory;
   const card = el('article', '', { class: directory ? 'content-card directory-card' : 'content-card' });
   const imageUrl = https(row.cover_url || row.photo_url || row.image_url);
-  if (imageUrl) card.append(el('img', '', { src: imageUrl, alt: row.title || row.full_name || row.name || '', loading: 'lazy', class: directory ? 'directory-avatar' : null }));
+  const photoName = row.title || row.full_name || row.name || 'barangay personnel';
+  if (imageUrl) card.append(el('img', '', {
+    src: imageUrl,
+    alt: photoName,
+    loading: 'lazy',
+    class: directory ? 'directory-avatar' : null,
+    'data-photo-viewer': personnelPhoto ? 'true' : null,
+    'data-photo-caption': personnelPhoto ? photoName : null,
+    tabindex: personnelPhoto ? '0' : null,
+    role: personnelPhoto ? 'button' : null,
+    'aria-haspopup': personnelPhoto ? 'dialog' : null,
+    'aria-label': personnelPhoto ? `View larger photo of ${photoName}` : null,
+  }));
   else if (directory) card.append(el('span', '', { class: 'directory-avatar directory-icon', 'aria-label': 'No photo uploaded' }));
   const category = row.category || row.position || row.album || (table === 'announcements' ? 'Barangay advisory' : null);
   if (category) card.append(el('p', category, { class: 'eyebrow' }));
