@@ -12,6 +12,7 @@ import { createVerification, extractQrToken } from '../assets/js/data/verificati
 import { createStorage, ownedObjectPath } from '../assets/js/data/storage.js';
 import { createEditors } from '../assets/js/data/editors.js';
 import { createApplications } from '../assets/js/data/applications.js';
+import { DIRECTORY_GROUPS } from '../assets/js/data/contracts.js';
 import { SUPABASE_URL, AUTH_STORAGE_KEY } from '../assets/js/core/config.js';
 
 /** A thenable query builder records requests without touching the live database. */
@@ -89,6 +90,13 @@ test('public queries always apply the publish flag and pagination', async () => 
   await createContent(client, denied).list('announcements', { publicOnly: true, page: 1, pageSize: 25 });
   assert.ok(client.log[0].steps.some(step => JSON.stringify(step) === JSON.stringify(['eq', 'is_published', true])));
   assert.ok(client.log[0].steps.some(step => JSON.stringify(step) === JSON.stringify(['range', 25, 49])));
+});
+test('public functionary queries reuse directory records and group them alphabetically', async () => {
+  const client = mockClient();
+  await createContent(client, denied).list('directory_entries', { publicOnly: true, categories: DIRECTORY_GROUPS.functionaries, alphabetical: true });
+  assert.deepEqual(client.log[0].steps.find(step => step[0] === 'in'), ['in', 'category', DIRECTORY_GROUPS.functionaries]);
+  assert.ok(client.log[0].steps.some(step => step[0] === 'order' && step[1] === 'category'));
+  assert.ok(client.log[0].steps.some(step => step[0] === 'order' && step[1] === 'name'));
 });
 test('public callers cannot enumerate profiles, verification records, or settings through generic content', async () => {
   for (const table of ['profiles', 'verification_records', 'site_settings', '__proto__']) {
