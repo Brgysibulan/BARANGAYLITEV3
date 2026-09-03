@@ -72,3 +72,8 @@ Never put a Supabase secret/service-role key in this frontend. The configured pu
 ## Deployment boundary
 
 The static source can be served by the existing GitHub Pages workflow or ordinary static hosting. No new hosting provider, Supabase project, schema migration, or Auth redirect allowlist was created. Application/activation screens reuse the existing services; invitation email redirects still need the owner to validate their production URL against the existing Auth configuration. No invitation, signup, password update, or live theme publication is performed by the automated tests.
+
+
+## Footer design options
+
+Design Studio includes four responsive footer styles: Civic columns, Light institutional, Accent band, and Minimal. Every style follows the published primary, secondary, and accent colors and keeps the same official navigation and contact data.
