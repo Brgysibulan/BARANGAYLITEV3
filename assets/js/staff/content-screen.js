@@ -5,7 +5,7 @@
  */
 import { CONTENT, VERIFICATION_FIELDS } from '../data/contracts.js';
 import { element as el } from '../core/dom.js';
-import { button, heading, badge, recordTable, editorDialog, dateText } from './ui.js';
+import { button, heading, badge, recordTable, editorDialog, confirmationDialog, detailsDialog, dateText } from './ui.js';
 import { fullName, idStatus } from '../data/id-model.js';
 
 /** Defaults publish nothing accidentally; edits send only fields the operator changed. */
@@ -31,35 +31,54 @@ function localDateTime(value) { if (!value) return ''; const d = new Date(value)
 export function mountContent(root, table, services, isCurrent) {
   const verification = table === 'verification'; const def = verification ? null : CONTENT[table];
   const service = verification ? services.verification : services.content;
+  const itemLabel = verification ? 'ID record' : ({ announcements: 'announcement', services: 'service', officials: 'official', directory_entries: 'directory entry', disclosures: 'disclosure', forms: 'form', gallery_items: 'gallery item', pages: 'barangay page' })[table];
   let dialog, page = 0, generation = 0, disposed = false;
   const message = el('p', '', { role: 'status', class: 'module-message' });
   const active = () => !disposed && isCurrent();
   async function openEditor(row = {}) {
     if (!active()) return;
     const original = { ...row }; if (row.published_at) original.published_at = localDateTime(row.published_at);
-    dialog = editorDialog({ title: (row.id ? 'Edit ' : 'Add ') + (verification ? 'ID record' : def.label), fields: editFields(table, row), original,
+    let writePerformed = false;
+    dialog = editorDialog({ title: (row.id ? 'Edit ' : 'Add ') + itemLabel, fields: editFields(table, row), original,
       description: verification ? 'Existing QR tokens are retained. These details are visible only through the current verification rules.' : 'Only checked Published / Active records appear on the public website.',
+      saveLabel: row.id ? 'Update record' : 'Create record',
       async onSave(values, file) {
         if (values.published_at) values.published_at = new Date(values.published_at).toISOString();
         // Only changed values are patched; an unrelated update in another tab is not blanked.
         const payload = row.id ? Object.fromEntries(Object.entries(values).filter(([key, value]) => key === 'published_at' ? localDateTime(value) !== localDateTime(row[key]) : value !== (row[key] ?? null))) : values;
         if (!file && !Object.keys(payload).length) return row;
         try {
-          if (verification) return await service.save(payload, row.id ?? null);
-          let prepared = file;
-          if (file && def.bucket === 'gallery-media') { const { optimizeImage } = await import('../media/images.js'); prepared = await optimizeImage(file); }
-          return prepared ? await services.storage.saveWithUpload(table, payload, row.id ?? null, prepared) : await services.content.save(table, payload, row.id ?? null);
+          let saved;
+          if (verification) saved = await service.save(payload, row.id ?? null);
+          else {
+            let prepared = file;
+            if (file && def.bucket === 'gallery-media') { const { optimizeImage } = await import('../media/images.js'); prepared = await optimizeImage(file); }
+            saved = prepared ? await services.storage.saveWithUpload(table, payload, row.id ?? null, prepared) : await services.content.save(table, payload, row.id ?? null);
+          }
+          writePerformed = true;
+          return saved;
         } catch (error) { if (!row.id) error.message += ' If the connection dropped, close and refresh the list before creating again to avoid duplicates.'; throw error; }
       },
-      afterSave: async () => { if (!active()) return; message.textContent = 'Saved successfully. Published changes are available on the public website.'; await load(page); },
+      afterSave: async saved => {
+        if (!active()) return;
+        if (!writePerformed) message.textContent = 'No changes were made.';
+        else if (verification) message.textContent = row.id ? 'ID record updated successfully.' : 'ID record created successfully.';
+        else message.textContent = `${row.id ? 'Updated' : 'Created'} successfully. ${saved?.[def.flag] ? 'This record is visible on the public website.' : 'This record remains draft / hidden.'}`;
+        await load(page);
+      },
     });
   }
-  heading(root, verification ? 'ID records & QR codes' : def.label, verification ? 'Manage existing IDs and download print-ready verification QR codes.' : 'Keep barangay information clear, current and ready for residents.', [button(verification ? '+ Add ID' : '+ Add record', () => openEditor(), true)]);
+  function openDetails(row) {
+    const name = verification ? row.control_number : row[def.title];
+    dialog = detailsDialog({ title: `View ${itemLabel}: ${name}`, fields: editFields(table, row), record: row });
+  }
+  heading(root, verification ? 'ID records & QR codes' : def.label, verification ? 'Create, view, update, delete, and download print-ready verification QR codes.' : `Create, view, update, and delete ${def.label.toLowerCase()} from one screen.`, [button(`+ Add ${itemLabel}`, () => openEditor(), true)]);
   const toolbar = el('form', '', { class: 'list-toolbar', role: 'search' });
   const search = el('input', '', { type: 'search', maxlength: 100, placeholder: verification ? 'Search ID number…' : 'Search name or title…', 'aria-label': verification ? 'Search ID number' : 'Search name or title' });
   const filter = el('select', '', { 'aria-label': verification ? 'Stored status filter' : 'Visibility filter' });
   (verification ? [['all', 'All stored statuses'], ['ACTIVE', 'Stored: ACTIVE'], ['INACTIVE', 'Stored: INACTIVE'], ['EXPIRED', 'Stored: EXPIRED']] : [['all', 'All records'], ['published', 'Published / active'], ['draft', 'Draft / hidden']]).forEach(([value, text]) => filter.append(el('option', text, { value })));
-  toolbar.append(search, filter, el('button', 'Search', { type: 'submit' }));
+  const clearFilters = button('Clear filters', () => { search.value = ''; filter.value = 'all'; appliedSearch = ''; appliedFilter = 'all'; load(0); });
+  toolbar.append(search, filter, el('button', 'Search', { type: 'submit' }), clearFilters);
   const slot = el('div'); const footer = el('div', '', { class: 'list-footer' }); const summary = el('span', 'Loading records…');
   const previous = button('← Previous', () => load(page - 1)); const next = button('Next →', () => load(page + 1)); footer.append(summary, previous, next); root.append(toolbar, message, slot, footer);
   let appliedSearch = '', appliedFilter = 'all';
@@ -71,7 +90,13 @@ export function mountContent(root, table, services, isCurrent) {
   ] : [{ key: def.title }, ...(['officials', 'directory_entries', 'forms', 'disclosures', 'gallery_items'].includes(table) ? [{ key: table === 'officials' ? 'position' : table === 'gallery_items' ? 'album' : 'category' }] : []), { key: def.flag, label: 'Visibility', render: row => badge(row[def.flag] ? 'Published' : 'Draft / hidden', row[def.flag] ? 'good' : '') }, { key: def.order, render: row => def.order.endsWith('_at') ? dateText(row[def.order]) : row[def.order] }];
   async function remove(row, trigger) {
     const name = verification ? row.control_number : row[def.title];
-    if (!confirm(`Delete “${name}”? This removes the database record. Linked files are retained; this cannot be undone here.`)) return;
+    const confirmed = await confirmationDialog({
+      title: `Delete ${itemLabel}?`,
+      description: `“${name}” will be permanently removed from the database. Linked files are retained because they may still be used elsewhere.`,
+      confirmLabel: 'Delete record',
+      destructive: true,
+    });
+    if (!confirmed || !active()) return;
     trigger.disabled = true;
     message.textContent = 'Deleting record…';
     try { if (verification) await service.remove(row.id); else await service.remove(table, row.id); if (active()) { message.textContent = `Deleted “${name}”.`; await load(page); } }
@@ -79,7 +104,7 @@ export function mountContent(root, table, services, isCurrent) {
     finally { trigger.disabled = false; }
   }
   function actions(row) {
-    const result = [button('Edit', () => openEditor(row))];
+    const result = [button('View', () => openDetails(row)), button('Edit', () => openEditor(row))];
     if (verification) result.push(button('QR / Download', async () => { try { const { showQr } = await import('./qr.js'); if (active()) dialog = await showQr(row, { isCurrent: active }); } catch (error) { if (active()) message.textContent = error.message; } }));
     result.push(button('Delete', event => remove(row, event.currentTarget))); return result;
   }
