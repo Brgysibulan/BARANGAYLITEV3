@@ -4,24 +4,25 @@
  * Debug: pause/hidden/reduced-motion prevent movement; focus/poll reads refresh dashboard changes.
  */
 import { element as el } from '../core/dom.js';
-export function createCarousel(slides, { autoplay = true } = {}) {
+export const CAROUSEL_INTERVAL_MS = 5000;
+export function createCarousel(slides, { autoplay = true, intervalMs = CAROUSEL_INTERVAL_MS } = {}) {
   const root = el('section', '', { class: 'cover-slideshow', 'aria-label': 'Barangay cover photos', 'aria-roledescription': 'carousel' });
-  const image = el('img', '', { alt: slides[0]?.alt || '', width: 1600, height: 700, decoding: 'async', fetchpriority: 'high' });
-  const caption = el('p', '', { class: 'cover-caption' }); const controls = el('div', '', { class: 'slideshow-controls' });
-  let index = 0, paused = !autoplay || matchMedia('(prefers-reduced-motion: reduce)').matches, hovered = false, focused = false;
-  const position = el('span', '', { 'aria-live': 'off' });
-  const previous = el('button', '←', { type: 'button', 'aria-label': 'Previous cover photo' });
-  const next = el('button', '→', { type: 'button', 'aria-label': 'Next cover photo' });
-  const pause = el('button', paused ? 'Play slideshow' : 'Pause slideshow', { type: 'button' });
-  function show(target) { index = (target + slides.length) % slides.length; image.src = slides[index].url; image.alt = slides[index].alt; caption.textContent = slides[index].caption || ''; caption.hidden = !caption.textContent; position.textContent = `${index + 1} / ${slides.length}`; }
-  previous.addEventListener('click', () => show(index - 1)); next.addEventListener('click', () => show(index + 1));
-  pause.addEventListener('click', () => { paused = !paused; pause.textContent = paused ? 'Play slideshow' : 'Pause slideshow'; });
-  root.addEventListener('mouseenter', () => { hovered = true; }); root.addEventListener('mouseleave', () => { hovered = false; });
-  root.addEventListener('focusin', () => { focused = true; }); root.addEventListener('focusout', event => { focused = root.contains(event.relatedTarget); });
-  controls.append(previous, position, next, pause); controls.hidden = slides.length < 2; root.append(image, caption, controls);
+  const image = el('img', '', { alt: slides[0]?.alt || '', width: 1600, height: 700, decoding: 'async', fetchpriority: 'high', draggable: 'false' });
+  const caption = el('p', '', { class: 'cover-caption' });
+  let index = 0, timer = null;
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function show(target) { index = (target + slides.length) % slides.length; image.src = slides[index].url; image.alt = slides[index].alt; caption.textContent = slides[index].caption || ''; caption.hidden = !caption.textContent; }
+  const tick = () => { if (!document.hidden && root.isConnected) show(index + 1); };
+  const schedule = () => {
+    if (timer) clearInterval(timer);
+    timer = slides.length > 1 && autoplay && !reducedMotion ? setInterval(tick, intervalMs) : null;
+  };
+  const next = () => { show(index + 1); schedule(); };
+  const previous = () => { show(index - 1); schedule(); };
+  root.append(image, caption);
   show(0);
-  const timer = slides.length > 1 && autoplay ? setInterval(() => { if (!paused && !hovered && !focused && !document.hidden && root.isConnected) show(index + 1); }, 6000) : null;
-  return { element: root, dispose: () => { if (timer) clearInterval(timer); } };
+  schedule();
+  return { element: root, next, previous, dispose: () => { if (timer) clearInterval(timer); } };
 }
 
 /** Keep an open homepage aligned with the existing dashboard record without a second cache/store. */
