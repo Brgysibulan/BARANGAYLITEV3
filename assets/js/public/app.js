@@ -13,6 +13,7 @@ import { presetDesign } from '../design/model.js';
 import { publicHome, publicHeader, publicFooter, contentCard } from '../design/public-renderer.js';
 import { watchAvailability, maintenanceSurface } from './availability.js';
 import { watchCovers } from './carousel.js';
+import { installPhotoViewer } from './photo-viewer.js';
 
 const PUBLIC_ROUTES = Object.freeze({
   announcements: { table: 'announcements', title: 'News & Updates' },
@@ -43,8 +44,9 @@ export async function startPublicPage({ services: injectedServices } = {}) {
   let homeErrors = {};
   let covers = [], homeCleanup;
   let stopAvailability, stopCovers, stopRouter, stopDesign, disposed = false;
+  const stopPhotoViewer = installPhotoViewer(root);
   const showHome = () => { homeCleanup?.(); const home = publicHome(settings, homeData, config, { errors: homeErrors, covers }); root.replaceChildren(home); homeCleanup = home.dispose; };
-  const cleanup = () => { disposed = true; stopAvailability?.(); stopCovers?.(); stopRouter?.(); stopDesign?.(); homeCleanup?.(); };
+  const cleanup = () => { disposed = true; stopAvailability?.(); stopCovers?.(); stopRouter?.(); stopDesign?.(); homeCleanup?.(); stopPhotoViewer(); };
   window.addEventListener('pagehide', cleanup, { once: true });
   try {
     const services = injectedServices || getServices();
