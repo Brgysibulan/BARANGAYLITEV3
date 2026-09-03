@@ -85,6 +85,22 @@ test('third picker synchronizes hex and preview, rejects invalid input, and supp
     assert.equal([...root.querySelectorAll('button')].find(button => button.textContent === 'Preview only').disabled, true);
   } finally { fixture.cleanup(); }
 });
+test('expanded controls publish only validated choices and preview the existing Dashboard cover', () => {
+  const cover = { id: 'existing-cover', url: 'https://example.com/existing-cover.webp', alt: 'Existing cover' };
+  const fixture = studioFixture({ previewCovers: [cover] });
+  try {
+    const overlay = fixture.root.querySelector('#design-heroOverlay');
+    const tone = fixture.root.querySelector('#design-heroTone');
+    assert.ok(overlay); assert.ok(tone);
+    assert.ok(fixture.root.querySelectorAll('.control-grid select').length >= 17);
+    overlay.value = 'balanced'; overlay.dispatchEvent(new window.Event('change'));
+    tone.value = 'secondary'; tone.dispatchEvent(new window.Event('change'));
+    const message = fixture.messages.at(-1).message;
+    assert.equal(message.config.heroOverlay, 'balanced');
+    assert.equal(message.config.heroTone, 'secondary');
+    assert.deepEqual(message.covers, [cover]);
+  } finally { fixture.cleanup(); }
+});
 test('secondary draft calls the existing publish service only after confirmation', async () => {
   const saved = []; const published = [];
   const fixture = studioFixture({ service: { publish: async config => { saved.push(structuredClone(config)); return { config }; } }, onPublished: config => published.push(config) });
