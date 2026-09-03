@@ -2,14 +2,14 @@
 
 ## One design source
 
-All CSS lives in `assets/css/design-system.css`, in numbered sections: tokens, Public, five layouts, Staff/Access, Studio, responsive rules. Every HTML shell loads exactly that one file; inline styles and extra stylesheets fail validation. Only validated runtime variables are assigned by JavaScript.
+All CSS lives in `assets/css/design-system.css`, in numbered sections: tokens, Public, eight layouts, Staff/Access, Studio, responsive rules. Every HTML shell loads exactly that one file; inline styles and extra stylesheets fail validation. Only validated runtime variables are assigned by JavaScript.
 
-`assets/js/design/model.js` owns National Authority, Executive Civic, Public Service, Institutional, and Modern LGU. Their actual DOM section order is different, alongside masthead, hero, navigation, staff, and access layout rules. The public map always sits before the footer.
+`assets/js/design/model.js` owns National Authority, Executive Civic, Public Service, Institutional, Community Showcase, Transparency First, Civic Minimal, and Modern LGU. Their actual DOM section order is different, alongside masthead, hero, navigation, staff, and access layout rules. The public map always sits before the footer.
 
 ## Draft → review → publish
 
 1. Sign in using the existing System Admin credentials, then open **Design Studio** in the navigation.
-2. Choose a preset; customize main, secondary, and accent colors, heading font, corners, navigation tone, and width. Preset selection restores that preset's defaults.
+2. Choose a preset; customize main, secondary, and accent colors, heading/body fonts, corners, header spacing, page width, hero layer/photo treatment, page surface, cards, section spacing, and public navigation. Preset selection restores that preset's defaults.
 3. Preview Public, System Admin, Content Admin, Login, Signup/Application, or Activation at desktop, tablet, and mobile widths.
 4. **Publish Everywhere** then **Confirm publish** saves the shared design. Until confirmation, changes exist only in memory inside the draft editor. Refresh/leave warnings protect unsaved drafts.
 5. **Discard changes** restores the loaded published baseline. **Reset to Modern LGU default** changes the draft only, so it still needs publishing.
@@ -23,6 +23,16 @@ The staff navigation inside that iframe is also a sample. Use **Open live Page S
 - **Main color** controls primary buttons and primary highlights.
 - **Secondary color** controls the resident quick-links panel, public footer, colored staff sidebar, and access-screen side panel. The light sidebar option remains light. The Public Service layout intentionally hides the quick-links panel; its footer still uses the secondary color.
 - **Accent color** controls accent buttons, selected staff navigation, and decorative accents.
+
+## Expanded appearance controls
+
+- **Hero photo & layer:** photo visibility, solid/gradient/vignette layer, main/secondary/neutral layer color, natural/muted/monochrome treatment, top/center/bottom crop position, hero height, and text alignment.
+- **Typography & structure:** five safe local font stacks for headings and body text, four corner styles, three page widths, three header densities, and light/colored staff navigation.
+- **Surfaces & components:** clean/tinted/high-contrast page backgrounds, outlined/soft/elevated cards, compact/comfortable/spacious section rhythm, and underline/pill/boxed navigation.
+- The default hero treatment is a strong theme-colored gradient with a muted photo, so the existing Barangay Hall image remains atmospheric while text stays prominent. The layer color is derived from the selected Design Studio palette; it is never hardcoded to green.
+- The authenticated Design Studio reads the existing Dashboard cover record for preview only. It does not upload, copy, duplicate, delete, or replace media. Cover CRUD remains exclusively in **Cover photos**.
+
+The validated non-color choices alone provide well over 100,000 combinations. Custom color pickers expand that further without allowing arbitrary CSS or remote fonts. Older version-1 designs normalize to safe defaults, so no database migration is required.
 
 Every color accepts a native picker or a six-digit hex value. Foreground text is derived as black or white for readability. Invalid text cannot reach the preview or saved theme. The optional `secondary` key stays within version 1; older saved themes inherit their existing main color, so they are not recolored on upgrade. Reset, discard, preview, and confirmed publishing all include the new color. No new dependency or database migration is needed.
 
@@ -41,7 +51,7 @@ On reload, a neutral notice stays visible until the saved colors and layout have
 ## Debugging and verification
 
 - Wrong section order: check `PRESETS[config.preset].sectionOrder`, then `public-renderer.js`.
-- Inconsistent appearance: check the one stylesheet link, `runtime.js`, and HTML `data-theme`/`data-sidebar`/`data-width` attributes.
+- Inconsistent appearance: check the one stylesheet link, `runtime.js`, and the validated HTML `data-*` appearance attributes.
 - Preview unchanged: check the iframe channel/origin handshake and sample screen selection. Preview content is intentionally not a live-data copy.
 - Failed publish: distinguish access denial, offline failure, and `DESIGN_CONFLICT`. Never remove the admin guard or concurrency filter to hide an error.
 - Public list errors: inspect `data/content.js`, published flags, and module-specific query errors. No fake records are substituted.
