@@ -70,16 +70,17 @@ export function publicHeader(settings, route = 'home') {
 /** Cards retain module-specific information; no invented dates, counts, processing details, or contacts. */
 export function contentCard(table, row) {
   const directory = table === 'directory_entries';
+  const official = table === 'officials';
   const personnelPhoto = table === 'officials' || directory;
   const viewerPhoto = personnelPhoto || table === 'gallery_items';
-  const card = el('article', '', { class: directory ? 'content-card directory-card' : 'content-card' });
+  const card = el('article', '', { class: ['content-card', directory && 'directory-card', official && 'official-card'].filter(Boolean).join(' ') });
   const imageUrl = https(row.cover_url || row.photo_url || row.image_url);
   const photoName = row.title || row.full_name || row.name || 'barangay personnel';
   if (imageUrl) card.append(el('img', '', {
     src: imageUrl,
     alt: photoName,
     loading: 'lazy',
-    class: directory ? 'directory-avatar' : null,
+    class: directory ? 'directory-avatar' : official ? 'official-photo' : null,
     'data-photo-viewer': viewerPhoto ? 'true' : null,
     'data-photo-group': viewerPhoto ? table : null,
     'data-photo-caption': viewerPhoto ? photoName : null,
@@ -108,6 +109,65 @@ export function contentCard(table, row) {
     if (!Number.isNaN(date.getTime())) card.append(el('small', date.toLocaleDateString('en-PH', { dateStyle: 'medium' })));
   }
   return card;
+}
+
+/** Position text controls presentation only; the existing Officials rows and sort order stay authoritative. */
+function officialSlot(row) {
+  const position = String(row.position || '').trim().toLowerCase();
+  const youth = /\bsk\b|sangguniang kabataan/.test(position);
+  if (youth && /chair/.test(position)) return 'skLeader';
+  if (youth && /secretary|treasurer/.test(position)) return 'skSupport';
+  if (youth && /kagawad|councilor|councillor|member/.test(position)) return 'skCouncil';
+  if (youth) return 'skOther';
+  if (/punong barangay|barangay captain/.test(position)) return 'barangayLeader';
+  if (/\bipmr\b|indigenous peoples.*representative|secretary|treasurer/.test(position)) return 'barangaySupport';
+  if (/kagawad|councilor|councillor|council member/.test(position)) return 'barangayCouncil';
+  return 'barangayOther';
+}
+
+/** Build the public officials page as a hierarchy without creating fixed or duplicate official records. */
+export function officialsRoster(rows = []) {
+  const slots = {
+    barangayLeader: [], barangayCouncil: [], barangaySupport: [], barangayOther: [],
+    skLeader: [], skCouncil: [], skSupport: [], skOther: [],
+  };
+  rows.forEach(row => slots[officialSlot(row)].push(row));
+  const supportRank = row => /\bipmr\b|indigenous peoples/i.test(row.position || '') ? 0 : /secretary/i.test(row.position || '') ? 1 : /treasurer/i.test(row.position || '') ? 2 : 3;
+  slots.barangaySupport.sort((a, b) => supportRank(a) - supportRank(b));
+  slots.skSupport.sort((a, b) => supportRank(a) - supportRank(b));
+
+  const tier = (name, label, records) => {
+    if (!records.length) return null;
+    const node = el('div', '', { class: `official-tier official-tier-${name}`, 'aria-label': label });
+    records.forEach(row => node.append(contentCard('officials', row)));
+    return node;
+  };
+  const group = (name, eyebrow, title, tiers) => {
+    if (!tiers.some(([, , records]) => records.length)) return null;
+    const section = el('section', '', { class: `official-group official-group-${name}` });
+    const heading = el('header', '', { class: 'official-group-heading' });
+    heading.append(el('p', eyebrow, { class: 'eyebrow' }), el('h2', title));
+    section.append(heading);
+    tiers.forEach(([tierName, label, records]) => { const node = tier(tierName, label, records); if (node) section.append(node); });
+    return section;
+  };
+
+  const roster = el('div', '', { class: 'officials-roster' });
+  const barangay = group('barangay', 'Local leadership', 'Barangay Council', [
+    ['leader', 'Punong Barangay', slots.barangayLeader],
+    ['councilors', 'Barangay Kagawad', slots.barangayCouncil],
+    ['support', 'IPMR, Barangay Secretary, and Barangay Treasurer', slots.barangaySupport],
+    ['other', 'Other Barangay Officials', slots.barangayOther],
+  ]);
+  const sk = group('sk', 'Youth leadership', 'Sangguniang Kabataan', [
+    ['leader', 'SK Chairperson', slots.skLeader],
+    ['councilors', 'SK Kagawad', slots.skCouncil],
+    ['sk-support', 'SK Secretary and SK Treasurer', slots.skSupport],
+    ['other', 'Other SK Officials', slots.skOther],
+  ]);
+  if (barangay) roster.append(barangay);
+  if (sk) roster.append(sk);
+  return roster;
 }
 
 /** Map and structured footer share existing settings; no contact or link data is invented. */
