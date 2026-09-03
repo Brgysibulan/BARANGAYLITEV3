@@ -117,6 +117,11 @@ export function publicHome(settings, content, config, { preview = false, errors 
     carousel.element.classList.add('hero-cover');
     hero.classList.add('has-cover');
     hero.append(carousel.element);
+    hero.addEventListener('click', event => {
+      // The photo/color layer advances without exposing a separate control panel.
+      // Links, forms, and buttons keep their normal actions inside the same hero.
+      if (covers.length > 1 && !event.target.closest?.('a,button,input,select,textarea,form,label')) carousel.next();
+    });
     root.dispose = carousel.dispose;
   }
   const copy = el('div', '', { class: 'hero-copy' });
