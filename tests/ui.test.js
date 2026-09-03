@@ -12,7 +12,7 @@ import { editFields } from '../assets/js/staff/content-screen.js';
 import { mountStudio } from '../assets/js/design/studio.js';
 import { presetDesign } from '../assets/js/design/model.js';
 import { accessSurface } from '../assets/js/design/access-renderer.js';
-import { contentCard, publicHome, publicFooter, publicHeader } from '../assets/js/design/public-renderer.js';
+import { contentCard, officialsRoster, publicHome, publicFooter, publicHeader } from '../assets/js/design/public-renderer.js';
 import { CAROUSEL_INTERVAL_MS } from '../assets/js/public/carousel.js';
 import { installPhotoViewer } from '../assets/js/public/photo-viewer.js';
 import { showRecords } from '../assets/js/core/dom.js';
@@ -76,6 +76,23 @@ test('directory cards use a neutral icon when no uploaded photo is available', (
   assert.ok(card.classList.contains('directory-card'));
   assert.ok(card.querySelector('.directory-icon'));
   assert.equal(card.querySelector('img'), null);
+});
+test('officials roster follows the Barangay Council and SK hierarchy', () => {
+  const official = (full_name, position) => ({ full_name, position, photo_url: `https://example.com/${encodeURIComponent(full_name)}.webp` });
+  const roster = officialsRoster([
+    official('SK Treasurer', 'SK Treasurer'), official('Barangay Treasurer', 'Barangay Treasurer'),
+    official('Kagawad One', 'Barangay Kagawad'), official('SK Kagawad One', 'SK Kagawad'),
+    official('Punong Barangay', 'Punong Barangay'), official('IPMR', 'IPMR'),
+    official('Barangay Secretary', 'Barangay Secretary'), official('SK Chairperson', 'SK Chairperson'),
+    official('SK Secretary', 'SK Secretary'),
+  ]);
+  assert.equal(roster.querySelectorAll('.official-group').length, 2);
+  assert.match(roster.querySelector('.official-group-barangay .official-tier-leader').textContent, /Punong Barangay/);
+  assert.equal(roster.querySelectorAll('.official-group-barangay .official-tier-councilors .official-card').length, 1);
+  assert.deepEqual([...roster.querySelectorAll('.official-tier-support .official-card h3')].map(node => node.textContent), ['IPMR', 'Barangay Secretary', 'Barangay Treasurer']);
+  assert.match(roster.querySelector('.official-group-sk .official-tier-leader').textContent, /SK Chairperson/);
+  assert.equal(roster.querySelectorAll('.official-group-sk .official-tier-councilors .official-card').length, 1);
+  assert.deepEqual([...roster.querySelectorAll('.official-tier-sk-support .official-card h3')].map(node => node.textContent), ['SK Secretary', 'SK Treasurer']);
 });
 test('uploaded personnel photos open in an accessible previous and next viewer', () => {
   const root = document.createElement('main');
