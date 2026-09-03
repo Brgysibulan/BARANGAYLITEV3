@@ -61,3 +61,8 @@ On reload, a neutral notice stays visible until the saved colors and layout have
 ## Generated share image
 
 Built-in image generation created `assets/images/social-card.png`, a landscape forest-green/off-white/gold typography card. Prompt: “BRGYWEBLITEV3”, “Barangay Sibulan”, “Public information & services”; restrained government digital identity; no seal, people, credentials, or browser screenshot. This is a static share card, not a government seal or a real barangay photograph.
+
+
+## Footer designs
+
+The validated `footerStyle` token provides four layouts: `civic`, `light`, `banded`, and `minimal`. The public renderer always uses the same barangay identity, existing contact settings, map validation, and public destinations; styles only change presentation. Footer colors are derived from the published Design Studio tokens.
