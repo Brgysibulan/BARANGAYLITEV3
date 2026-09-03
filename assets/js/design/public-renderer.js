@@ -92,8 +92,12 @@ export function publicHome(settings, content, config, { preview = false, errors 
   const root = el('div', '', { class: 'public-surface' });
   root.append(publicHeader(settings));
   const main = el('main', '', { id: 'public-main', tabindex: '-1', class: 'container' });
-  if (covers.length) { const carousel = createCarousel(covers, { autoplay: !preview }); main.append(carousel.element); root.dispose = carousel.dispose; }
   const hero = el('section', '', { class: 'hero' });
+  if (covers.length) {
+    // The saved dashboard slideshow is the hero's visual layer, never a duplicated image record.
+    const carousel = createCarousel(covers, { autoplay: !preview });
+    carousel.element.classList.add('hero-cover'); hero.classList.add('has-cover'); hero.append(carousel.element); root.dispose = carousel.dispose;
+  }
   const copy = el('div', '', { class: 'hero-copy' });
   const featured = design.preset === 'executive-civic' && (content.announcements?.find(row => row.is_featured) || content.announcements?.[0]);
   copy.append(el('p', featured ? 'FEATURED BARANGAY ANNOUNCEMENT' : 'YOUR BARANGAY. YOUR COMMUNITY.', { class: 'eyebrow' }));

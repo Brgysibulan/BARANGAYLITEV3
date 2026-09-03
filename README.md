@@ -4,7 +4,7 @@ Logic-first continuation of `Brgysibulan/BRGYWEB-LITE`, using the **same existin
 
 ## Current stage
 
-The redesigned staff workspace now supports editable public content, real dashboard aggregates, ID records and downloadable QR files, up to five compressed homepage covers, site settings, Content Admin management, and measured file-storage/GitHub status. The shared Design Studio still provides five government layouts with confirmed admin-only publishing. Existing System Admin credentials and the original verification rules are unchanged.
+The redesigned staff workspace now supports editable public content, real dashboard aggregates, ID records and downloadable QR files, up to five compressed homepage covers, site settings, Content Admin management, and measured file-storage/GitHub status. The existing published covers now appear as the public hero background and refresh from the same System Dashboard record; no duplicate image system is used. The shared Design Studio still provides five government layouts with confirmed admin-only publishing. Existing System Admin credentials and the original verification rules are unchanged.
 
 Design Studio includes main, secondary, and accent color pickers with matching hex inputs. The secondary color controls supporting panels while preserving older saved palettes. The authored interface is fully English; stored barangay content is not translated or modified.
 
