@@ -14,13 +14,14 @@ import { element as el } from '../core/dom.js';
 const channel = new URLSearchParams(location.search).get('channel');
 const root = document.querySelector('#preview-root');
 let design;
+let covers = [];
 let surface = 'public';
 let route = 'home';
 const render = config => {
   design = applyDesign(config);
   if (['login', 'signup', 'activation'].includes(surface)) root.replaceChildren(accessSurface(surface, SAMPLE_SETTINGS, { preview: true }));
   else if (['admin', 'editor'].includes(surface)) root.replaceChildren(staffPreview(surface));
-  else if (route === 'home') root.replaceChildren(publicHome(SAMPLE_SETTINGS, SAMPLE_CONTENT, design, { preview: true }));
+  else if (route === 'home') root.replaceChildren(publicHome(SAMPLE_SETTINGS, SAMPLE_CONTENT, design, { preview: true, covers }));
   else {
     const page = el('div', '', { class: 'public-surface' });
     const main = el('main', '', { class: 'container page-content' });
@@ -35,6 +36,7 @@ window.addEventListener('message', event => {
   if (event.origin !== location.origin || event.source !== parent || !channel || event.data?.channel !== channel || event.data?.type !== 'brgy-design-preview') return;
   if (surface !== event.data.surface) route = 'home';
   surface = ['public', 'admin', 'editor', 'login', 'signup', 'activation'].includes(event.data.surface) ? event.data.surface : 'public';
+  covers = Array.isArray(event.data.covers) ? event.data.covers : [];
   render(event.data.config);
 });
 // Preview links remain inside the preview; they must never take the admin to a live form.

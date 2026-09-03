@@ -4,9 +4,9 @@ Logic-first continuation of `Brgysibulan/BRGYWEB-LITE`, using the **same existin
 
 ## Current stage
 
-The redesigned staff workspace now supports editable public content, real dashboard aggregates, ID records and downloadable QR files, up to five compressed homepage covers, site settings, Content Admin management, and measured file-storage/GitHub status. The shared Design Studio still provides five government layouts with confirmed admin-only publishing. Existing System Admin credentials and the original verification rules are unchanged.
+The redesigned staff workspace now supports editable public content, real dashboard aggregates, ID records and downloadable QR files, up to five compressed homepage covers, site settings, Content Admin management, and measured file-storage/GitHub status. The shared Design Studio provides eight government layouts plus validated typography, spacing, surface, navigation, card, header, and hero-photo controls with confirmed admin-only publishing. Existing System Admin credentials and the original verification rules are unchanged.
 
-Design Studio includes main, secondary, and accent color pickers with matching hex inputs. The secondary color controls supporting panels while preserving older saved palettes. The authored interface is fully English; stored barangay content is not translated or modified.
+Design Studio includes main, secondary, and accent color pickers with matching hex inputs. Its hero layer follows the chosen main or secondary color, offers controlled photo visibility/treatment/position, and previews the same existing Dashboard cover without copying its record. The secondary color controls supporting panels while preserving older saved palettes. The authored interface is fully English; stored barangay content is not translated or modified.
 
 Live Page Settings is `admin/index.html#settings` (existing System Admin access required), not the sample Design Studio iframe. Maintenance has dedicated enable/disable, notice editing, and preview controls. The existing flag pauses public pages and ID verification, including open tabs after the next availability check, while keeping staff login/workspaces accessible. No backend permissions or live maintenance state are changed by this release.
 

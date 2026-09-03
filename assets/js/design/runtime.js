@@ -13,6 +13,18 @@ export function applyDesign(value, root = document.documentElement) {
   root.dataset.corners = config.corners;
   root.dataset.width = config.width;
   root.dataset.sidebar = config.sidebar;
+  root.dataset.headerDensity = config.headerDensity;
+  root.dataset.surface = config.surface;
+  root.dataset.cardStyle = config.cardStyle;
+  root.dataset.spacing = config.spacing;
+  root.dataset.navStyle = config.navStyle;
+  root.dataset.heroOverlay = config.heroOverlay;
+  root.dataset.heroOverlayStyle = config.heroOverlayStyle;
+  root.dataset.heroTone = config.heroTone;
+  root.dataset.heroImage = config.heroImage;
+  root.dataset.heroFocus = config.heroFocus;
+  root.dataset.heroHeight = config.heroHeight;
+  root.dataset.heroAlign = config.heroAlign;
   root.style.setProperty('--primary', config.primary);
   root.style.setProperty('--on-primary', contrastText(config.primary));
   // The same validated panel color/foreground pair is used in previews and live shells.
@@ -21,6 +33,9 @@ export function applyDesign(value, root = document.documentElement) {
   root.style.setProperty('--accent', config.accent);
   root.style.setProperty('--on-accent', contrastText(config.accent));
   root.style.setProperty('--heading-font', FONTS[config.font]);
+  root.style.setProperty('--body-font', FONTS[config.bodyFont]);
+  const heroColor = config.heroTone === 'secondary' ? config.secondary : config.heroTone === 'neutral' ? '#18211f' : config.primary;
+  root.style.setProperty('--hero-color', heroColor);
   return config;
 }
 

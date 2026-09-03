@@ -70,8 +70,11 @@ export async function startWorkspace(workspace) {
         if (!isCurrent()) return; status.textContent = '';
         if (route === 'design-studio') {
           const snapshot = await services.design.read(); if (!isCurrent()) return;
+          // Reuse the existing Dashboard cover record in the isolated preview; no media is copied or saved here.
+          const previewCovers = await services.covers.read().then(value => value.slides).catch(() => []);
+          if (!isCurrent()) return;
           const studio = el('div', '', { class: 'studio-wrap' }); view.append(studio);
-          currentCleanup = mountStudio(studio, { snapshot, service: services.design, previewUrl: '../preview.html', onPublished: applyDesign });
+          currentCleanup = mountStudio(studio, { snapshot, service: services.design, previewUrl: '../preview.html', previewCovers, onPublished: applyDesign });
         } else if (route === 'dashboard') currentCleanup = mountDashboard(view, services, isAdmin, isCurrent);
         else if (route === 'usage') currentCleanup = mountUsage(view, services, isCurrent);
         else if (route === 'settings') currentCleanup = mountSettings(view, services, isCurrent);
