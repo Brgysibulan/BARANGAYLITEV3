@@ -66,6 +66,7 @@ export async function startPublicPage({ services: injectedServices } = {}) {
           const shell = el('div', '', { class: 'public-surface' });
           const main = el('main', '', { id: 'public-main', tabindex: '-1', class: 'container page-content' });
           main.append(el('h1', SECTIONS[route][1], { class: 'page-heading' }));
+          if (route === 'services') main.append(el('p', 'Service information only. This website does not collect online payments. Complete any required transaction directly at the Barangay Hall and request an official receipt.', { class: 'notice service-payment-notice' }));
           const summary = el('p', '', { role: 'status', class: 'muted' });
           const cards = el('div', '', { class: 'cards' });
           const more = el('button', 'Load more', { type: 'button' });
