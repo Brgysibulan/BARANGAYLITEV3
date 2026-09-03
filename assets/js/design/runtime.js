@@ -18,6 +18,7 @@ export function applyDesign(value, root = document.documentElement) {
   root.dataset.cardStyle = config.cardStyle;
   root.dataset.spacing = config.spacing;
   root.dataset.navStyle = config.navStyle;
+  root.dataset.footerStyle = config.footerStyle;
   root.dataset.heroOverlay = config.heroOverlay;
   root.dataset.heroOverlayStyle = config.heroOverlayStyle;
   root.dataset.heroTone = config.heroTone;
