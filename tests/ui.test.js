@@ -6,7 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseHTML } from 'linkedom';
-import { editorDialog, fieldsForm, recordTable, labelFor } from '../assets/js/staff/ui.js';
+import { editorDialog, fieldsForm, recordTable, labelFor, confirmationDialog, detailsDialog } from '../assets/js/staff/ui.js';
 import { verificationResult } from '../assets/js/public/verify.js';
 import { mountStudio } from '../assets/js/design/studio.js';
 import { presetDesign } from '../assets/js/design/model.js';
@@ -49,6 +49,21 @@ test('tables display safe content and empty states', () => {
   assert.match(recordTable([], [], () => []).textContent, /No matching/);
   const table = recordTable([{ title: '<img src=x onerror=bad>' }], [{ key: 'title' }], () => []);
   assert.equal(table.querySelector('img'), null);
+  assert.equal(table.querySelector('td').getAttribute('data-label'), 'Title');
+});
+test('website confirmation dialog resolves without a browser confirm popup', async () => {
+  const decision = confirmationDialog({ title: 'Delete service?', description: 'This removes the record.', confirmLabel: 'Delete record', destructive: true });
+  assert.match(document.querySelector('dialog').textContent, /Delete service/);
+  [...document.querySelectorAll('button')].find(node => node.textContent === 'Delete record').click();
+  assert.equal(await decision, true);
+  assert.equal(document.querySelector('dialog'), null);
+});
+test('view details dialog exposes all record fields before editing', () => {
+  const close = detailsDialog({ title: 'View service', fields: [{ key: 'name' }, { key: 'is_active' }], record: { name: 'Barangay clearance', is_active: true } });
+  assert.match(document.querySelector('dialog').textContent, /Barangay clearance/);
+  assert.match(document.querySelector('dialog').textContent, /Yes/);
+  close(); close();
+  assert.equal(document.querySelector('dialog'), null);
 });
 
 /** No iframe or network runs here: the recorded message is the isolated preview contract. */
