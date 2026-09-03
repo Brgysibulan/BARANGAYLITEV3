@@ -611,10 +611,23 @@ input[type=checkbox] { width:22px; height:22px; min-height:22px; accent-color:va
   .list-footer { flex-wrap:wrap; } .list-footer span { flex-basis:100%; }
   .verification-form,.scanner-panel,.verification-result { padding:1.25rem; }
   .id-details { grid-template-columns:1fr; gap:.25rem; } .id-details dd { margin-bottom:.65rem; }
-  .official-card { padding:.55rem .35rem; }
-  .content-card .official-photo { width:112px; max-width:100%; border-radius:12px; }
-  .official-tier-leader { grid-template-columns:minmax(150px,190px); }
-  .official-tier-sk-support { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  /* Keep the full officials directory compact on phones. These rules are scoped
+     to the roster so the already-compact three-card Home preview stays unchanged. */
+  .officials-roster { gap:1.5rem; }
+  .officials-roster .official-group { padding:1rem .45rem; }
+  .officials-roster .official-group-heading { margin-bottom:1.1rem; }
+  .officials-roster .official-group-heading::after { width:42px; margin-top:.55rem; }
+  .officials-roster .official-tier { gap:.55rem .25rem; }
+  .officials-roster .official-tier + .official-tier { margin-top:1.1rem; padding-top:1.1rem; }
+  .officials-roster .official-card { padding:.35rem .15rem; }
+  .officials-roster .content-card .official-photo { width:88px; margin-bottom:.45rem; border-radius:10px; }
+  .officials-roster .official-tier-leader { grid-template-columns:minmax(120px,150px); }
+  .officials-roster .official-tier-leader .official-photo { width:100px; }
+  .officials-roster .official-card .eyebrow { margin-bottom:.2rem; font-size:.5rem; }
+  .officials-roster .official-card h3 { font-size:.72rem; line-height:1.25; }
+  .officials-roster .official-tier-support { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .officials-roster .official-tier-support > :last-child:nth-child(odd) { max-width:145px; }
+  .officials-roster .official-tier-sk-support { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
 
 
