@@ -6,7 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseHTML } from 'linkedom';
-import { editorDialog, fieldsForm, recordTable } from '../assets/js/staff/ui.js';
+import { editorDialog, fieldsForm, recordTable, labelFor } from '../assets/js/staff/ui.js';
 import { verificationResult } from '../assets/js/public/verify.js';
 import { mountStudio } from '../assets/js/design/studio.js';
 import { presetDesign } from '../assets/js/design/model.js';
@@ -115,6 +115,12 @@ test('secondary draft calls the existing publish service only after confirmation
     assert.equal(published[0].secondary, '#123456');
     assert.match(fixture.root.querySelector('.studio-message').textContent, /Published everywhere/);
   } finally { fixture.cleanup(); }
+});
+test('service screens avoid fee wording and clarify that online payments are not collected', () => {
+  assert.equal(labelFor('fee_text'), 'Office instructions');
+  const card = contentCard('services', { name: 'Barangay document', fee_text: 'Visit the Barangay Hall for official processing details.' });
+  assert.match(card.textContent, /Office instructions/);
+  assert.doesNotMatch(card.textContent, /\bfees?\b/i);
 });
 test('English interface copy does not translate stored barangay content', () => {
   assert.equal(showRecords([], []).textContent, 'No records yet.');
