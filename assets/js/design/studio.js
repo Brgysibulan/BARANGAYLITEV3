@@ -112,6 +112,7 @@ export function mountStudio(root, { snapshot = { config: presetDesign() }, servi
     ['cardStyle', 'Card style', [['outlined', 'Outlined'], ['soft', 'Soft color'], ['elevated', 'Elevated']]],
     ['spacing', 'Section spacing', [['compact', 'Compact'], ['comfortable', 'Comfortable'], ['spacious', 'Spacious']]],
     ['navStyle', 'Navigation links', [['underline', 'Underline'], ['pills', 'Pills'], ['boxed', 'Boxed']]],
+    ['footerStyle', 'Footer design', [['civic', 'Civic columns'], ['light', 'Light institutional'], ['banded', 'Accent band'], ['minimal', 'Minimal']]],
   ].forEach(option => addSelect(componentGrid, ...option));
   components.append(componentGrid);
   const reset = el('button', 'Reset to Modern LGU default', { type: 'button' });
