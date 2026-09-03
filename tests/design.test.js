@@ -7,7 +7,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createDesign, designSnapshot } from '../assets/js/data/design.js';
 import { createContent } from '../assets/js/data/content.js';
-import { PRESETS, presetDesign, normalizeDesign, mergeDesign, contrastText, luminance, sameDesign } from '../assets/js/design/model.js';
+import { PRESETS, FONTS, DESIGN_OPTIONS, presetDesign, normalizeDesign, mergeDesign, contrastText, luminance, sameDesign } from '../assets/js/design/model.js';
 import { applyDesign } from '../assets/js/design/runtime.js';
 
 /** This builder logs only fake test data and never constructs a network client. */
@@ -24,14 +24,29 @@ function fixture(result = { data: { id: 1, design_theme: null }, error: null }) 
   return { client, auth, log };
 }
 
-test('five named presets all have genuinely different section orders', () => {
-  assert.equal(Object.keys(PRESETS).length, 5);
-  assert.equal(new Set(Object.values(PRESETS).map(item => item.name)).size, 5);
-  assert.equal(new Set(Object.values(PRESETS).map(item => item.sectionOrder.join(','))).size, 5);
+test('eight named presets all have genuinely different section orders', () => {
+  assert.equal(Object.keys(PRESETS).length, 8);
+  assert.equal(new Set(Object.values(PRESETS).map(item => item.name)).size, 8);
+  assert.equal(new Set(Object.values(PRESETS).map(item => item.sectionOrder.join(','))).size, 8);
   for (const preset of Object.values(PRESETS)) assert.equal(new Set(preset.sectionOrder).size, 8);
 });
 test('service-first places services and forms before announcements', () => {
   assert.deepEqual(PRESETS['public-service'].sectionOrder.slice(0, 3), ['services', 'forms', 'announcements']);
+});
+test('validated Design Studio choices provide more than one hundred thousand non-color combinations', () => {
+  const combinations = Object.values(DESIGN_OPTIONS).reduce((total, values) => total * values.length, Object.keys(PRESETS).length * Object.keys(FONTS).length ** 2);
+  assert.ok(combinations > 100000);
+  assert.equal(presetDesign().heroOverlay, 'strong');
+  assert.equal(presetDesign().heroTone, 'primary');
+});
+test('advanced appearance values normalize safely and unknown values fall back to preset defaults', () => {
+  const custom = normalizeDesign({ bodyFont: 'geometric', width: 'full', corners: 'extra-round', heroOverlay: 'soft', heroOverlayStyle: 'vignette', heroTone: 'secondary', heroImage: 'monochrome', heroFocus: 'top', heroHeight: 'tall', heroAlign: 'center', cardStyle: 'elevated', surface: 'tinted', spacing: 'spacious', navStyle: 'pills', headerDensity: 'compact' });
+  assert.equal(custom.bodyFont, 'geometric'); assert.equal(custom.width, 'full'); assert.equal(custom.heroTone, 'secondary');
+  const rejected = normalizeDesign({ heroOverlay: 'url(bad)', heroTone: '#ffffff', cardStyle: '<script>', bodyFont: 'remote' });
+  assert.equal(rejected.heroOverlay, presetDesign().heroOverlay);
+  assert.equal(rejected.heroTone, presetDesign().heroTone);
+  assert.equal(rejected.cardStyle, presetDesign().cardStyle);
+  assert.equal(rejected.bodyFont, presetDesign().bodyFont);
 });
 test('normalization refuses CSS injections, arbitrary properties, and unknown fonts', () => {
   const clean = normalizeDesign({ preset: 'public-service', primary: '#123456', accent: 'url(javascript:bad)', css: 'body{}', font: 'url(remote)', extra: '<script>' });
@@ -73,8 +88,14 @@ test('shared runtime applies independent main, secondary, and accent contrast pa
   assert.equal(properties.get('--secondary'), '#ffffff');
   assert.equal(properties.get('--on-secondary'), '#000000');
   assert.equal(properties.get('--accent'), '#abcdef');
-  applyDesign({ secondary: '#000000' }, root);
+  assert.equal(properties.get('--body-font'), FONTS.humanist);
+  assert.equal(properties.get('--hero-color'), '#123456');
+  assert.equal(root.dataset.heroOverlay, presetDesign().heroOverlay);
+  assert.equal(root.dataset.cardStyle, presetDesign().cardStyle);
+  applyDesign({ secondary: '#000000', heroTone: 'secondary', heroOverlay: 'soft' }, root);
   assert.equal(properties.get('--on-secondary'), '#ffffff');
+  assert.equal(properties.get('--hero-color'), '#000000');
+  assert.equal(root.dataset.heroOverlay, 'soft');
   applyDesign(undefined, root);
   assert.equal(properties.get('--secondary'), presetDesign().secondary);
 });
