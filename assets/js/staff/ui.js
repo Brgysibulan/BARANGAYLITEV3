@@ -7,7 +7,7 @@ import { element as el } from '../core/dom.js';
 
 /** Human-readable labels are shared by tables and forms. */
 export function labelFor(key) {
-  return ({ control_number: 'ID number', date_acquired: 'Date acquired', expiration_date: 'Expiration date', is_published: 'Published on public website', is_active: 'Active / visible', is_featured: 'Featured announcement', file_url: 'Document link', cover_url: 'Cover image link', photo_url: 'Photo link', image_url: 'Image link', map_embed_url: 'Google Maps embed URL', sort_order: 'Display order', fee_text: 'Fee', municipality_city: 'Municipality / city' })[key] || key.replaceAll('_', ' ').replace(/^./, c => c.toUpperCase());
+  return ({ control_number: 'ID number', date_acquired: 'Date acquired', expiration_date: 'Expiration date', is_published: 'Published on public website', is_active: 'Active / visible', is_featured: 'Featured announcement', file_url: 'Document link', cover_url: 'Cover image link', photo_url: 'Photo link', image_url: 'Image link', map_embed_url: 'Google Maps embed URL', sort_order: 'Display order', fee_text: 'Office instructions', municipality_city: 'Municipality / city' })[key] || key.replaceAll('_', ' ').replace(/^./, c => c.toUpperCase());
 }
 export function button(text, fn, primary = false) { const b = el('button', text, { type: 'button', class: primary ? 'primary' : '' }); b.addEventListener('click', fn); return b; }
 export function heading(root, title, description, actions = []) {
