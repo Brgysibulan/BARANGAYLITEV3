@@ -71,6 +71,7 @@ export function publicHeader(settings, route = 'home') {
 export function contentCard(table, row) {
   const directory = table === 'directory_entries';
   const personnelPhoto = table === 'officials' || directory;
+  const viewerPhoto = personnelPhoto || table === 'gallery_items';
   const card = el('article', '', { class: directory ? 'content-card directory-card' : 'content-card' });
   const imageUrl = https(row.cover_url || row.photo_url || row.image_url);
   const photoName = row.title || row.full_name || row.name || 'barangay personnel';
@@ -79,12 +80,13 @@ export function contentCard(table, row) {
     alt: photoName,
     loading: 'lazy',
     class: directory ? 'directory-avatar' : null,
-    'data-photo-viewer': personnelPhoto ? 'true' : null,
-    'data-photo-caption': personnelPhoto ? photoName : null,
-    tabindex: personnelPhoto ? '0' : null,
-    role: personnelPhoto ? 'button' : null,
-    'aria-haspopup': personnelPhoto ? 'dialog' : null,
-    'aria-label': personnelPhoto ? `View larger photo of ${photoName}` : null,
+    'data-photo-viewer': viewerPhoto ? 'true' : null,
+    'data-photo-group': viewerPhoto ? table : null,
+    'data-photo-caption': viewerPhoto ? photoName : null,
+    tabindex: viewerPhoto ? '0' : null,
+    role: viewerPhoto ? 'button' : null,
+    'aria-haspopup': viewerPhoto ? 'dialog' : null,
+    'aria-label': viewerPhoto ? `View larger photo of ${photoName}` : null,
   }));
   else if (directory) card.append(el('span', '', { class: 'directory-avatar directory-icon', 'aria-label': 'No photo uploaded' }));
   const category = row.category || row.position || row.album || (table === 'announcements' ? 'Barangay advisory' : null);

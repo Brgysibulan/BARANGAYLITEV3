@@ -105,6 +105,26 @@ test('uploaded personnel photos open in an accessible previous and next viewer',
     assert.equal(dialog.hasAttribute('open'), false);
   } finally { cleanup(); root.remove(); }
 });
+test('Community Gallery photos use the same viewer without mixing photo groups', () => {
+  const root = document.createElement('main');
+  root.append(
+    contentCard('officials', { full_name: 'Barangay Official', photo_url: 'https://example.com/official.webp' }),
+    contentCard('gallery_items', { title: 'Community Activity', image_url: 'https://example.com/activity.webp' }),
+    contentCard('gallery_items', { title: 'Barangay Event', image_url: 'https://example.com/event.webp' })
+  );
+  document.body.append(root);
+  const cleanup = installPhotoViewer(root);
+  try {
+    const galleryPhotos = root.querySelectorAll('[data-photo-group="gallery_items"]');
+    assert.equal(galleryPhotos.length, 2);
+    galleryPhotos[0].click();
+    const dialog = document.querySelector('.photo-viewer');
+    assert.equal(dialog.querySelector('.photo-viewer-count').textContent, '1 of 2');
+    dialog.querySelector('.photo-viewer-next').click();
+    assert.equal(dialog.querySelector('.photo-viewer-image').getAttribute('src'), 'https://example.com/event.webp');
+    assert.equal(dialog.querySelector('.photo-viewer-count').textContent, '2 of 2');
+  } finally { cleanup(); root.remove(); }
+});
 test('website confirmation dialog resolves without a browser confirm popup', async () => {
   const decision = confirmationDialog({ title: 'Delete service?', description: 'This removes the record.', confirmLabel: 'Delete record', destructive: true });
   assert.match(document.querySelector('dialog').textContent, /Delete service/);
