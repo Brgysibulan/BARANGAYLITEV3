@@ -37,7 +37,7 @@ export function publicHeader(settings, route = 'home') {
   nav.append(links); header.append(utility, masthead, nav); return header;
 }
 
-/** Cards retain module-specific information; no invented dates, counts, fees, or contacts. */
+/** Cards retain module-specific information; no invented dates, counts, processing details, or contacts. */
 export function contentCard(table, row) {
   const card = el('article', '', { class: 'content-card' });
   const imageUrl = https(row.cover_url || row.photo_url || row.image_url);
@@ -48,7 +48,7 @@ export function contentCard(table, row) {
   const text = row.excerpt || row.description || row.bio || row.caption || row.summary || row.role_title;
   if (text) card.append(el('p', text, { class: 'body-copy' }));
   if (table === 'services') {
-    for (const [key, label] of [['requirements', 'Requirements'], ['fee_text', 'Fee'], ['processing_time', 'Processing time']]) {
+    for (const [key, label] of [['requirements', 'Requirements'], ['fee_text', 'Office instructions'], ['processing_time', 'Processing time']]) {
       if (row[key]) { const details = el('details'); details.append(el('summary', label), el('p', row[key], { class: 'body-copy' })); card.append(details); }
     }
   }
