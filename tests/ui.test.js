@@ -14,6 +14,7 @@ import { presetDesign } from '../assets/js/design/model.js';
 import { accessSurface } from '../assets/js/design/access-renderer.js';
 import { contentCard, publicHome, publicFooter, publicHeader } from '../assets/js/design/public-renderer.js';
 import { CAROUSEL_INTERVAL_MS } from '../assets/js/public/carousel.js';
+import { installPhotoViewer } from '../assets/js/public/photo-viewer.js';
 import { showRecords } from '../assets/js/core/dom.js';
 const { window } = parseHTML('<!doctype html><html><body></body></html>');
 globalThis.window = window; globalThis.document = window.document; globalThis.Node = window.Node;
@@ -75,6 +76,34 @@ test('directory cards use a neutral icon when no uploaded photo is available', (
   assert.ok(card.classList.contains('directory-card'));
   assert.ok(card.querySelector('.directory-icon'));
   assert.equal(card.querySelector('img'), null);
+});
+test('uploaded personnel photos open in an accessible previous and next viewer', () => {
+  const root = document.createElement('main');
+  root.append(
+    contentCard('officials', { full_name: 'First Official', photo_url: 'https://example.com/first.webp' }),
+    contentCard('directory_entries', { name: 'Second Functionary', category: 'BHW', photo_url: 'https://example.com/second.webp' }),
+    contentCard('directory_entries', { name: 'No Photo', category: 'BNS' })
+  );
+  document.body.append(root);
+  const cleanup = installPhotoViewer(root);
+  try {
+    const photos = root.querySelectorAll('[data-photo-viewer="true"]');
+    assert.equal(photos.length, 2);
+    assert.equal(photos[0].getAttribute('role'), 'button');
+    assert.match(photos[0].getAttribute('aria-label'), /First Official/);
+    photos[0].click();
+    const dialog = document.querySelector('.photo-viewer');
+    assert.ok(dialog.hasAttribute('open'));
+    assert.equal(dialog.querySelector('.photo-viewer-image').getAttribute('src'), 'https://example.com/first.webp');
+    assert.equal(dialog.querySelector('.photo-viewer-count').textContent, '1 of 2');
+    dialog.querySelector('.photo-viewer-next').click();
+    assert.equal(dialog.querySelector('.photo-viewer-image').getAttribute('src'), 'https://example.com/second.webp');
+    assert.equal(dialog.querySelector('.photo-viewer-count').textContent, '2 of 2');
+    dialog.querySelector('.photo-viewer-next').click();
+    assert.equal(dialog.querySelector('.photo-viewer-count').textContent, '1 of 2');
+    dialog.querySelector('.photo-viewer-close').click();
+    assert.equal(dialog.hasAttribute('open'), false);
+  } finally { cleanup(); root.remove(); }
 });
 test('website confirmation dialog resolves without a browser confirm popup', async () => {
   const decision = confirmationDialog({ title: 'Delete service?', description: 'This removes the record.', confirmLabel: 'Delete record', destructive: true });

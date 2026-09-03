@@ -33,6 +33,7 @@ This preserves the original website-level maintenance contract. It is not a new 
 - `data/covers.js`: up to five public slides in `design_theme.brgyweblitev3_covers`. Atomic JSON comparison prevents a cover save from overwriting a concurrent theme edit.
 - `design/public-renderer.js` nests those same saved covers inside `.hero` as `.hero-cover`; `design-system.css` darkens the image for readable hero text. No cover record, URL, bucket, or CRUD path is duplicated. If no cover is saved, the plain hero fallback remains.
 - `public/app.js` maps Staff and Functionaries routes back to filtered `directory_entries`. If a record appears in the wrong public directory, check its exact category against `DIRECTORY_GROUPS` in `data/contracts.js`, then check `is_active`.
+- `public/photo-viewer.js` opens uploaded Official, Staff, and Functionary photos in one full-size dialog. Previous/next wraps through the currently rendered photos; keyboard arrows and mobile swipe use the same list. CSS placeholder icons are excluded because only HTTPS image records receive `data-photo-viewer`.
 - `data/usage.js`: existing Storage metadata and public GitHub REST metadata only. No secret key or privileged backend was added.
 
 When a create/save request fails after upload, close and refresh before retrying to avoid duplicates. Uploaded files are retained when a save outcome is uncertain. Existing files are not automatically deleted because they may have other references. Billing/quota/bandwidth/database size are deliberately unavailable, not zero.
