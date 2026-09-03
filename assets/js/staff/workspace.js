@@ -15,6 +15,7 @@ import { mountContent } from './content-screen.js';
 import { mountDashboard, mountUsage } from './dashboard.js';
 import { mountSettings, mountCovers } from './settings-screen.js';
 import { mountAccounts } from './accounts-screen.js';
+import { mountVisibility } from './visibility-screen.js';
 
 /** Verify an active database profile before revealing any staff navigation or private records. */
 export async function startWorkspace(workspace) {
@@ -37,7 +38,7 @@ export async function startWorkspace(workspace) {
     identity.textContent = staff.profile.display_name || staff.user.email;
     signout.hidden = false;
     const routes = [['dashboard', 'Overview', '◫'], ...Object.entries(CONTENT).map(([key, def], i) => [key, def.label, ['▤', '◇', '♙', '☷', '▧', '⇩', '▣', '▥'][i]])];
-    if (isAdmin) routes.push(['verification', 'ID records & QR', '▦'], ['covers', 'Cover photos', '▣'], ['design-studio', 'Design Studio', '◈'], ['settings', 'Page settings', '⚙'], ['editors', 'Content Admins', '♙'], ['usage', 'System status & usage', '◷']);
+    if (isAdmin) routes.push(['verification', 'ID records & QR', '▦'], ['covers', 'Cover photos', '▣'], ['design-studio', 'Design Studio', '◈'], ['settings', 'Page settings', '⚙'], ['visibility', 'Public visibility', '◉'], ['editors', 'Content Admins', '♙'], ['usage', 'System status & usage', '◷']);
     nav.replaceChildren();
     const navBrand = el('div', '', { class: 'nav-brand' }); navBrand.append(el('span', 'B', { class: 'nav-mark', 'aria-hidden': 'true' }), el('strong', 'Barangay workspace'), el('small', isAdmin ? 'SYSTEM ADMIN' : 'CONTENT ADMIN')); nav.append(navBrand);
     const list = el('ul');
@@ -78,6 +79,7 @@ export async function startWorkspace(workspace) {
         } else if (route === 'dashboard') currentCleanup = mountDashboard(view, services, isAdmin, isCurrent);
         else if (route === 'usage') currentCleanup = mountUsage(view, services, isCurrent);
         else if (route === 'settings') currentCleanup = mountSettings(view, services, isCurrent);
+        else if (route === 'visibility') currentCleanup = mountVisibility(view, services, isCurrent);
         else if (route === 'covers') currentCleanup = mountCovers(view, services, isCurrent);
         else if (route === 'editors') currentCleanup = mountAccounts(view, services, isCurrent);
         else currentCleanup = mountContent(view, route, services, isCurrent);

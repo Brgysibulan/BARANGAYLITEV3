@@ -63,12 +63,15 @@ test('public navigation exposes the approved hierarchy and Admin Portal choices'
   assert.equal(header.textContent.includes('Staff portal'), false);
   assert.equal(header.querySelector('summary[aria-current=page]').textContent, 'Directory');
 });
-test('directory CRUD offers fixed functionary categories and a photo-or-icon upload', () => {
+test('directory CRUD suggests known headings but accepts the barangay exact category text', () => {
   const fields = editFields('directory_entries');
   const category = fields.find(field => field.key === 'category');
   const upload = fields.find(field => field.key === 'upload');
-  assert.ok(category.options.includes('BHW'));
-  assert.ok(category.options.includes('Barangay Camp Manager'));
+  assert.equal(category.options, undefined);
+  assert.ok(category.suggestions.includes('BHW'));
+  const { form } = fieldsForm([category], {});
+  form.querySelector('[name=category]').value = 'Exact Local Designation';
+  assert.equal(form.querySelector('[name=category]').value, 'Exact Local Designation');
   assert.match(upload.label, /photo or icon/i);
 });
 test('directory cards use a neutral icon when no uploaded photo is available', () => {

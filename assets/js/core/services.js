@@ -14,6 +14,7 @@ import { createApplications } from '../data/applications.js';
 import { createDesign } from '../data/design.js';
 import { createCovers } from '../data/covers.js';
 import { createUsage } from '../data/usage.js';
+import { createVisibility } from '../data/visibility.js';
 
 /** Dependency injection keeps tests away from production accounts and records. */
 export function createServices(client) {
@@ -28,6 +29,7 @@ export function createServices(client) {
     applications: createApplications(client, auth),
     design: createDesign(client, auth),
     covers: createCovers(client, auth),
+    visibility: createVisibility(client, auth),
     usage: createUsage(client, auth),
   });
 }

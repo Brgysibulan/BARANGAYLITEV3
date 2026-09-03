@@ -43,6 +43,7 @@ const click = (root, text) => { const target = [...root.querySelectorAll('button
 
 test('login preserves Page Settings only for a verified admin and rejects arbitrary redirects', () => {
   assert.equal(staffDestination('admin', 'settings'), 'admin/index.html#settings');
+  assert.equal(staffDestination('admin', 'visibility'), 'admin/index.html#visibility');
   assert.equal(staffDestination('editor', 'settings'), 'editor/index.html');
   assert.equal(staffDestination('editor', 'pages'), 'editor/index.html#pages');
   for (const next of ['https://example.test', '//example.test', '../settings', 'settings?bad', null]) assert.equal(staffDestination('admin', next), 'admin/index.html');
@@ -85,10 +86,10 @@ test('maintenance toggle confirms first, patches only the flag, and can turn off
   const root = shell('settings-test'), f = fixture(); f.settings({ maintenance_title: null, maintenance_message: null });
   const cleanup = mountSettings(root, f.services, () => true);
   try {
-    await flush(); globalThis.confirm = () => false; click(root, 'Enable maintenance mode'); await flush(); assert.equal(f.writes.length, 0);
-    globalThis.confirm = () => true; click(root, 'Enable maintenance mode'); await flush(); assert.deepEqual(f.writes[0], { maintenance_mode: true }); assert.match(root.textContent, /ON · Public website paused/);
-    click(root, 'Disable maintenance mode'); await flush(); assert.deepEqual(f.writes[1], { maintenance_mode: false }); assert.match(root.textContent, /OFF · Public website live/);
-  } finally { globalThis.confirm = () => true; cleanup(); }
+    await flush(); click(root, 'Enable maintenance mode'); click(document.querySelector('dialog'), 'Cancel'); await flush(); assert.equal(f.writes.length, 0);
+    click(root, 'Enable maintenance mode'); click(document.querySelector('dialog'), 'Enable maintenance'); await flush(); assert.deepEqual(f.writes[0], { maintenance_mode: true }); assert.match(root.textContent, /ON · Public website paused/);
+    click(root, 'Disable maintenance mode'); click(document.querySelector('dialog'), 'Reopen website'); await flush(); assert.deepEqual(f.writes[1], { maintenance_mode: false }); assert.match(root.textContent, /OFF · Public website live/);
+  } finally { cleanup(); }
 });
 test('maintenance preview is write-free and a denied toggle never displays false success', async () => {
   const root = shell('settings-test'), f = fixture(); f.services.settings.update = async () => { throw new Error('Access denied'); };
@@ -96,7 +97,7 @@ test('maintenance preview is write-free and a denied toggle never displays false
   try {
     await flush(); click(root, 'Preview maintenance notice'); assert.match(document.querySelector('dialog').textContent, /Preview only/); assert.equal(f.writes.length, 0);
     click(document.querySelector('dialog'), 'Close preview');
-    click(root, 'Enable maintenance mode'); await flush(); assert.match(root.textContent, /Access denied/); assert.match(root.textContent, /OFF · Public website live/);
+    click(root, 'Enable maintenance mode'); click(document.querySelector('dialog'), 'Enable maintenance'); await flush(); assert.match(root.textContent, /Access denied/); assert.match(root.textContent, /OFF · Public website live/);
   } finally { cleanup(); }
 });
 test('editing notice text keeps maintenance unchanged and supplies safe blank-field defaults', async () => {
@@ -123,7 +124,7 @@ test('open public page switches to maintenance and resumes its route when mainte
     f.settings({ maintenance_mode: true }); window.dispatchEvent(new window.Event('focus')); await flush();
     assert.match(root.textContent, /Planned maintenance/); assert.equal(root.querySelector('.public-nav'), null);
     const count = f.counts().contentReads; location.hash = '#services'; window.dispatchEvent(new window.Event('hashchange')); await flush(); assert.equal(f.counts().contentReads, count);
-    f.settings({ maintenance_mode: false }); window.dispatchEvent(new window.Event('focus')); await flush(); assert.ok(root.querySelector('.public-nav')); assert.match(root.textContent, /Barangay services/);
+    f.settings({ maintenance_mode: false }); window.dispatchEvent(new window.Event('focus')); await flush(); assert.ok(root.querySelector('.public-nav')); assert.match(root.textContent, /Barangay Services/);
     f.fail(true); window.dispatchEvent(new window.Event('focus')); await flush(); assert.match(root.textContent, /Website temporarily unavailable/); assert.equal(root.querySelector('.public-nav'), null);
   } finally { cleanup(); }
 });

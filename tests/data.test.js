@@ -30,7 +30,7 @@ function mockClient({ result = { data: [], error: null, count: 0 }, user = { id:
       const call = { table, steps: [] };
       log.push(call);
       const chain = {};
-      for (const name of ['select', 'eq', 'in', 'order', 'range', 'single', 'maybeSingle', 'insert', 'update', 'upsert', 'delete']) {
+      for (const name of ['select', 'eq', 'neq', 'in', 'order', 'range', 'single', 'maybeSingle', 'insert', 'update', 'upsert', 'delete']) {
         chain[name] = (...args) => { call.steps.push([name, ...args]); return chain; };
       }
       chain.then = (resolve, reject) => Promise.resolve(table === 'profiles' ? { data: profile, error: null } : typeof result === 'function' ? result(call) : result).then(resolve, reject);
@@ -91,10 +91,12 @@ test('public queries always apply the publish flag and pagination', async () => 
   assert.ok(client.log[0].steps.some(step => JSON.stringify(step) === JSON.stringify(['eq', 'is_published', true])));
   assert.ok(client.log[0].steps.some(step => JSON.stringify(step) === JSON.stringify(['range', 25, 49])));
 });
-test('public functionary queries reuse directory records and group them alphabetically', async () => {
+test('public functionary queries accept local headings while excluding reserved directory groups', async () => {
   const client = mockClient();
-  await createContent(client, denied).list('directory_entries', { publicOnly: true, categories: DIRECTORY_GROUPS.functionaries, alphabetical: true });
-  assert.deepEqual(client.log[0].steps.find(step => step[0] === 'in'), ['in', 'category', DIRECTORY_GROUPS.functionaries]);
+  await createContent(client, denied).list('directory_entries', { publicOnly: true, excludeCategories: [...DIRECTORY_GROUPS.contacts, ...DIRECTORY_GROUPS.staff], alphabetical: true });
+  assert.deepEqual(client.log[0].steps.filter(step => step[0] === 'neq'), [
+    ['neq', 'category', 'Contact'], ['neq', 'category', 'Barangay Staff'],
+  ]);
   assert.ok(client.log[0].steps.some(step => step[0] === 'order' && step[1] === 'category'));
   assert.ok(client.log[0].steps.some(step => step[0] === 'order' && step[1] === 'name'));
 });

@@ -12,6 +12,8 @@ import { watchDesign } from '../design/runtime.js';
 import { beginDesignLoad, designFailed } from '../design/boot.js';
 import { publicHeader } from '../design/public-renderer.js';
 import { watchAvailability, maintenanceSurface } from './availability.js';
+import { defaultVisibility, moduleVisible } from '../data/visibility.js';
+import { watchVisibility, unavailableSurface } from './visibility.js';
 
 /** Render only the fields authorized by the existing public verification RPC. */
 export function verificationResult(record) {
@@ -86,24 +88,43 @@ export function mountVerification(root, service, { checkAvailability = async () 
 export async function startVerificationPage({ services: injectedServices } = {}) {
   beginDesignLoad();
   const root = document.querySelector('#verify-root'), status = document.querySelector('#status');
-  let stopAvailability, stopDesign, currentCleanup, disposed = false;
-  const cleanup = () => { disposed = true; stopAvailability?.(); stopDesign?.(); currentCleanup?.(); };
+  let stopAvailability, stopVisibility, stopDesign, currentCleanup, disposed = false;
+  let settings, availabilityReady = false, visibility = defaultVisibility(), visibilityReady = false, availabilityError, visibilityError;
+  const cleanup = () => { disposed = true; stopAvailability?.(); stopVisibility?.(); stopDesign?.(); currentCleanup?.(); };
   window.addEventListener('pagehide', cleanup, { once: true });
   try {
     const services = injectedServices || getServices();
-    stopAvailability = watchAvailability(services.settings, (settings, error) => {
+    const visibilityService = services.visibility || { read: async () => ({ config: defaultVisibility() }) };
+    const render = () => {
+      if (disposed || !availabilityReady || !visibilityReady) return;
       // Dispose stops the camera and invalidates any outstanding verification result.
       currentCleanup?.(); currentCleanup = undefined; root.replaceChildren(); status.textContent = '';
       if (!settings || settings.maintenance_mode) {
-        root.append(maintenanceSurface(settings || {}, { error, mainId: 'verification-main', retry: () => stopAvailability.refresh() })); return;
+        root.append(maintenanceSurface(settings || {}, { error: availabilityError, mainId: 'verification-main', retry: () => stopAvailability.refresh() })); return;
       }
-      const header = publicHeader(settings, 'verify'); header.querySelectorAll('a[href^="#"]').forEach(link => { link.href = 'index.html' + link.getAttribute('href'); }); root.append(header);
+      if (!visibility || !moduleVisible(visibility, 'verify')) {
+        const header = publicHeader(settings, 'verify', visibility || defaultVisibility());
+        header.querySelectorAll('a[href^="#"]').forEach(link => { link.href = 'index.html' + link.getAttribute('href'); });
+        root.append(header, unavailableSurface(settings, { verification: !visibilityError, error: visibilityError, mainId: 'verification-main', retry: () => stopVisibility.refresh() }));
+        document.title = 'ID verification unavailable — Barangay ' + settings.barangay_name;
+        return;
+      }
+      const header = publicHeader(settings, 'verify', visibility); header.querySelectorAll('a[href^="#"]').forEach(link => { link.href = 'index.html' + link.getAttribute('href'); }); root.append(header);
       const main = el('main', '', { id: 'verification-main', tabindex: '-1', class: 'container verify-main' }); root.append(main);
       main.append(el('p', 'BARANGAY SIBULAN · RECORD VERIFICATION', { class: 'eyebrow muted' }), el('h1', 'Verify a barangay ID'), el('p', 'Check the name, acquisition date, expiration date and current status.', { class: 'muted' }));
-      currentCleanup = mountVerification(main, services.verification, { checkAvailability: async () => { const latest = await stopAvailability.refresh(); return latest?.maintenance_mode === false; } });
+      currentCleanup = mountVerification(main, services.verification, { checkAvailability: async () => {
+        const [latestSettings, latestVisibility] = await Promise.all([stopAvailability.refresh(), stopVisibility.refresh()]);
+        return latestSettings?.maintenance_mode === false && latestVisibility && moduleVisible(latestVisibility, 'verify');
+      } });
       const token = new URLSearchParams(location.search).get('qr'); if (token) currentCleanup.verifyToken(token);
+    };
+    stopAvailability = watchAvailability(services.settings, (next, error) => {
+      settings = next; availabilityError = error; availabilityReady = true; render();
     });
-    await stopAvailability.refresh(); if (disposed) return;
+    stopVisibility = watchVisibility(visibilityService, (next, error) => {
+      visibility = next; visibilityError = error; visibilityReady = true; render();
+    });
+    await Promise.all([stopAvailability.refresh(), stopVisibility.refresh()]); if (disposed) return;
     stopDesign = await watchDesign(services.design); if (disposed) stopDesign();
   } catch (error) { if (!disposed) { designFailed(); status.textContent = 'Unable to load verification: ' + error.message; } }
   return cleanup;

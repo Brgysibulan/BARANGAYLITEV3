@@ -105,6 +105,14 @@ export function fieldsForm(fields, original = {}) {
     if (def.required) input.required = true;
     if (def.accept) input.accept = def.accept;
     field.append(el('label', def.label || labelFor(def.key), { for: id }), input);
+    if (def.suggestions?.length && !def.options) {
+      // Datalist keeps the field free-text while offering existing/common headings.
+      const listId = `${id}-suggestions`;
+      input.setAttribute('list', listId);
+      const suggestions = el('datalist', '', { id: listId });
+      [...new Set(def.suggestions)].forEach(value => suggestions.append(el('option', '', { value })));
+      field.append(suggestions);
+    }
     if (def.help) field.append(el('small', def.help));
     controls.set(def.key, input); form.append(field);
   }

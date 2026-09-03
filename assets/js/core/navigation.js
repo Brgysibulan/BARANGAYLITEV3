@@ -5,7 +5,7 @@
  */
 export function staffDestination(role, requested = '') {
   const admin = role === 'admin';
-  const allowed = admin ? ['settings', 'design-studio', 'covers', 'pages'] : ['pages'];
+  const allowed = admin ? ['settings', 'visibility', 'design-studio', 'covers', 'pages'] : ['pages'];
   const hash = allowed.includes(requested) ? '#' + requested : '';
   return (admin ? 'admin/index.html' : 'editor/index.html') + hash;
 }

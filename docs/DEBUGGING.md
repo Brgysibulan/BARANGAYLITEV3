@@ -25,7 +25,12 @@ This preserves the original website-level maintenance contract. It is not a new 
 
 ## Staff editing / ID / cover update
 
-- `staff/content-screen.js`: content/ID Create, Read, Update, and Delete from one searchable screen. Directory Records provides the approved Contact, Barangay Staff, and functionary categories plus photo/icon upload. Read uses a details dialog; writes remain allowlisted by `data/contracts.js`; deletion uses an in-page confirmation before the existing service/RLS call.
+- `data/visibility.js` stores `brgyweblitev3_visibility` inside the existing `site_settings.design_theme` JSON. Every save reads the latest singleton and atomically patches one module or Directory heading, preserving the design, cover slideshow, legacy keys, records, and files. A `VISIBILITY_CONFLICT` means another settings writer changed the JSON first; reload before retrying.
+- `staff/visibility-screen.js` is the System Admin **Public visibility** screen. There is no whole-page Save: every module and every actual Directory category has its own switch and Save button. Turning off the Directory parent hides Officials, Staff, Functionaries, and Contact Directory without overwriting their individual ON/OFF preferences.
+- `public/visibility.js` rechecks saved visibility on entry, focus, and once per minute. `public/app.js` removes disabled links, Home previews, quick links, footer links, map, and direct routes. Empty Home modules collapse until content is published. A disabled direct route shows an unavailable notice instead of deleting or exposing records.
+- `public/verify.js` requires both normal website availability and `verify` visibility before calling either public RPC. When Verify is OFF, old printed QR links state that verification is temporarily unavailable and do not label the ID invalid.
+- `staff/content-screen.js`: content/ID Create, Read, Update, and Delete from one searchable screen. Directory Records accepts the exact local category heading plus an optional photo/icon upload. Read uses a details dialog; writes remain allowlisted by `data/contracts.js`; deletion uses an in-page confirmation before the existing service/RLS call.
+- Directory Category is a free-text field with suggestions, not a fixed designation list. `Contact` and `Barangay Staff` are reserved directory sections; every other exact category becomes a Functionaries group heading. `data/content.js` excludes the reserved headings server-side when loading Functionaries so custom local headings remain supported and paginated correctly.
 - `staff/ui.js`: shared typed forms, record details, mobile record cards, and in-page action confirmations. Save errors remain inside the open editor so the draft is not lost.
 - `staff/settings-screen.js`: singleton settings and five-cover draft/publish flow with in-page confirmations. Photos are compressed in `media/images.js` before upload.
 - `staff/dashboard.js`: current counts and recent stored updates. Missing counts are not silently treated as zero.
@@ -53,6 +58,8 @@ Each JavaScript module starts with Purpose, dependencies, and Debug notes. Safeg
 | Incorrect staff destination/access | `core/auth.js`, `staff/workspace.js` | The live profile is authoritative, not user metadata or a cached role |
 | Missing public content | `data/contracts.js`, `data/content.js` | Table/column names, public flag, pagination, and RLS errors |
 | Incorrect profile/settings | `data/settings.js` | `site_settings.id=1` and existing `barangay-*` slugs, not legacy CSS/theme |
+| Wrong public module visibility | `data/visibility.js`, `staff/visibility-screen.js` | Parent Directory state, individual module/group state, and `VISIBILITY_CONFLICT` |
+| Wrong Functionaries heading/group | Directory record `category`, `data/content.js` | Use the exact local heading; verify its group visibility and `is_active` |
 | ID/QR verification fails | `data/verification.js` | Original RPC arguments and existing QR token; never expose the private table |
 | Upload/save problem | `data/storage.js` | Bucket policy, permitted file type/size, and `error.retainedUpload` |
 | Content Admin approval problem | `data/editors.js` | `manage-editors` action, server error, System Admin role, and activation redirect configuration |

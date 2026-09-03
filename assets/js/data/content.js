@@ -8,7 +8,7 @@ import { contentContract, pickFields, validatePayload } from './contracts.js';
 
 export function createContent(client, auth) {
   /** Staff sees authorized content; publicOnly always excludes unpublished records. */
-  async function list(table, { publicOnly = false, page = 0, pageSize = 50, search = '', visibility = 'all', categories = [], alphabetical = false } = {}) {
+  async function list(table, { publicOnly = false, page = 0, pageSize = 50, search = '', visibility = 'all', categories = [], excludeCategories = [], alphabetical = false } = {}) {
     const def = contentContract(table);
     if (!Number.isInteger(page) || page < 0 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100) throw new Error('Invalid pagination.');
     if (!publicOnly) await auth.requireStaff();
@@ -17,9 +17,13 @@ export function createContent(client, auth) {
     if (publicOnly) query = query.eq(def.flag, true);
     if (!['all', 'published', 'draft'].includes(visibility)) throw new Error('Invalid visibility filter.');
     if (!publicOnly && visibility !== 'all') query = query.eq(def.flag, visibility === 'published');
-    if (!Array.isArray(categories) || categories.length > 20 || categories.some(value => typeof value !== 'string' || !value.trim() || value.length > 80)) throw new Error('Invalid directory categories.');
-    if ((categories.length || alphabetical) && table !== 'directory_entries') throw new Error('Directory filters are available only for directory records.');
+    const validCategories = values => Array.isArray(values) && values.length <= 120 && values.every(value => typeof value === 'string' && value.trim() && value.length <= 80);
+    if (!validCategories(categories) || !validCategories(excludeCategories)) throw new Error('Invalid directory categories.');
+    if ((categories.length || excludeCategories.length || alphabetical) && table !== 'directory_entries') throw new Error('Directory filters are available only for directory records.');
     if (categories.length) query = query.in('category', categories);
+    // Fixed reserved headings can be excluded one at a time; custom category text
+    // remains data, never a PostgREST expression assembled by the browser.
+    for (const category of excludeCategories) query = query.neq('category', category);
     if (search) {
       if ((publicOnly && table !== 'services') || typeof search !== 'string' || search.length > 100) throw new Error('Service searches must be at most 100 characters.');
       // Escaping LIKE wildcards keeps resident searches literal, not filter expressions.

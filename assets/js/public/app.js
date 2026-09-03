@@ -14,6 +14,8 @@ import { publicHome, publicHeader, publicFooter, contentCard, officialsRoster } 
 import { watchAvailability, maintenanceSurface } from './availability.js';
 import { watchCovers } from './carousel.js';
 import { installPhotoViewer } from './photo-viewer.js';
+import { defaultVisibility, hiddenDirectoryGroups, moduleVisible } from '../data/visibility.js';
+import { watchVisibility, unavailableSurface } from './visibility.js';
 
 const PUBLIC_ROUTES = Object.freeze({
   announcements: { table: 'announcements', title: 'News & Updates' },
@@ -24,10 +26,10 @@ const PUBLIC_ROUTES = Object.freeze({
   pages: { table: 'pages', title: 'Barangay Profile', intro: 'Published barangay profile and development information based on the BDP 2026.' },
   officials: { table: 'officials', title: 'Barangay Officials', roster: true },
   staff: { table: 'directory_entries', title: 'Barangay Staff', categories: DIRECTORY_GROUPS.staff, alphabetical: true, grouped: true, intro: 'Published personnel assigned to the Barangay Local Government Unit.' },
-  functionaries: { table: 'directory_entries', title: 'Barangay Functionaries', categories: DIRECTORY_GROUPS.functionaries, alphabetical: true, grouped: true, intro: 'Published BHW, BNS, Tanod, DCW, Lupon, monitoring, enforcement, and sectoral functionaries.' },
+  functionaries: { table: 'directory_entries', title: 'Barangay Functionaries', excludeCategories: [...DIRECTORY_GROUPS.contacts, ...DIRECTORY_GROUPS.staff], alphabetical: true, grouped: true, intro: 'Published functionary groups and members using the exact headings saved by the barangay.' },
   disclosures: { table: 'disclosures', title: 'Transparency & Reports' },
   gallery_items: { table: 'gallery_items', title: 'Community Gallery' },
-  directory_entries: { table: 'directory_entries', title: 'Contact Directory' },
+  directory_entries: { table: 'directory_entries', title: 'Contact Directory', categories: DIRECTORY_GROUPS.contacts },
 });
 const publicRoute = route => PUBLIC_ROUTES[route] || null;
 
@@ -39,17 +41,19 @@ export async function startPublicPage({ services: injectedServices } = {}) {
   const status = document.querySelector('#status');
   let config = presetDesign();
   let settings;
+  let visibility = defaultVisibility(), visibilityError;
   let homeData;
   let currentRoute;
   let homeErrors = {};
   let covers = [], homeCleanup;
-  let stopAvailability, stopCovers, stopRouter, stopDesign, disposed = false;
+  let stopAvailability, stopVisibility, stopCovers, stopRouter, stopDesign, disposed = false;
   const stopPhotoViewer = installPhotoViewer(root);
-  const showHome = () => { homeCleanup?.(); const home = publicHome(settings, homeData, config, { errors: homeErrors, covers }); root.replaceChildren(home); homeCleanup = home.dispose; };
-  const cleanup = () => { disposed = true; stopAvailability?.(); stopCovers?.(); stopRouter?.(); stopDesign?.(); homeCleanup?.(); stopPhotoViewer(); };
+  const showHome = () => { homeCleanup?.(); const home = publicHome(settings, homeData, config, { errors: homeErrors, covers, visibility }); root.replaceChildren(home); homeCleanup = home.dispose; };
+  const cleanup = () => { disposed = true; stopAvailability?.(); stopVisibility?.(); stopCovers?.(); stopRouter?.(); stopDesign?.(); homeCleanup?.(); stopPhotoViewer(); };
   window.addEventListener('pagehide', cleanup, { once: true });
   try {
     const services = injectedServices || getServices();
+    const visibilityService = services.visibility || { read: async () => ({ config: defaultVisibility() }) };
     stopCovers = watchCovers(services.covers, next => {
       covers = next;
       // Rebuild only the active homepage; its prior carousel timer is disposed by showHome().
@@ -58,8 +62,9 @@ export async function startPublicPage({ services: injectedServices } = {}) {
     document.querySelector('.skip-link')?.addEventListener('click', event => { event.preventDefault(); document.querySelector('#public-main')?.focus(); });
     const openPublic = () => { stopRouter = startRouter(async (route, isCurrent) => {
       // Each public navigation checks availability before requesting any content rows.
-      const latest = await stopAvailability.refresh();
-      if (!isCurrent() || !latest || latest.maintenance_mode) return;
+      const [latest, latestVisibility] = await Promise.all([stopAvailability.refresh(), stopVisibility.refresh()]);
+      if (!isCurrent() || !latest || latest.maintenance_mode || !latestVisibility) return;
+      visibility = latestVisibility;
       homeCleanup?.(); homeCleanup = undefined;
       currentRoute = route; status.textContent = 'Loading published information…';
       try {
@@ -69,8 +74,10 @@ export async function startPublicPage({ services: injectedServices } = {}) {
           try { covers = await stopCovers.refresh(); if (!isCurrent()) return; }
           catch { covers = []; }
           if (!isCurrent()) return;
-          const results = await Promise.all(Object.keys(CONTENT).map(async table => {
-            try { return { table, data: await services.content.list(table, { publicOnly: true, pageSize: 3 }) }; }
+          const visibleTables = Object.keys(CONTENT).filter(table => moduleVisible(visibility, table));
+          const results = await Promise.all(visibleTables.map(async table => {
+            const options = table === 'directory_entries' ? { categories: DIRECTORY_GROUPS.contacts } : {};
+            try { return { table, data: await services.content.list(table, { publicOnly: true, pageSize: 3, ...options }) }; }
             catch { return { table, error: true }; }
           }));
           if (!isCurrent()) return;
@@ -80,6 +87,12 @@ export async function startPublicPage({ services: injectedServices } = {}) {
         } else {
           const routeInfo = publicRoute(route);
           if (!routeInfo) throw new Error('Page not found. Choose a public information page from the navigation.');
+          if (!moduleVisible(visibility, route)) {
+            root.replaceChildren(unavailableSurface(settings));
+            document.title = routeInfo.title + ' unavailable — Barangay ' + settings.barangay_name;
+            status.textContent = '';
+            return;
+          }
           const shell = el('div', '', { class: 'public-surface' });
           const main = el('main', '', { id: 'public-main', tabindex: '-1', class: 'container page-content' });
           main.append(el('h1', routeInfo.title, { class: 'page-heading' }));
@@ -95,7 +108,7 @@ export async function startPublicPage({ services: injectedServices } = {}) {
             details.forEach(([label, value]) => { const row = el('div', '', { class: 'setting-row' }); row.append(el('small', label), el('p', value)); panel.append(row); });
             if (settings.facebook_url) panel.append(safeLink(settings.facebook_url, 'Open official Facebook page ↗'));
             if (!details.length && !settings.facebook_url) panel.append(el('p', 'Contact information has not been published yet.', { class: 'empty' }));
-            main.append(panel); shell.append(publicHeader(settings, route), main, publicFooter(settings)); root.replaceChildren(shell);
+            main.append(panel); shell.append(publicHeader(settings, route, visibility), main, publicFooter(settings, { visibility })); root.replaceChildren(shell);
           } else {
           let page = 0;
           const query = new URLSearchParams(location.hash.split('?')[1] || '').get('q') || '';
@@ -110,7 +123,7 @@ export async function startPublicPage({ services: injectedServices } = {}) {
             search.append(el('label', 'Search service names', { for: 'service-filter', class: 'sr-only' }), el('input', '', { id: 'service-filter', name: 'q', type: 'search', value: query, maxlength: 100, placeholder: 'Search service names…' }), el('button', 'Search', { type: 'submit', class: 'primary' }));
             search.addEventListener('submit', event => { event.preventDefault(); location.hash = 'services?q=' + encodeURIComponent(search.elements.q.value.trim()); }); main.append(search);
           }
-          main.append(summary, cards, more); shell.append(publicHeader(settings, route), main, publicFooter(settings)); root.replaceChildren(shell);
+          main.append(summary, cards, more); shell.append(publicHeader(settings, route, visibility), main, publicFooter(settings, { visibility })); root.replaceChildren(shell);
           const appendRow = row => {
             if (!routeInfo.grouped) { cards.append(contentCard(routeInfo.table, row)); return; }
             const category = row.category || 'Other';
@@ -127,11 +140,16 @@ export async function startPublicPage({ services: injectedServices } = {}) {
             try {
               // The route already checked its first page; subsequent loads recheck explicitly.
               if (page > 0) {
-                const currentSettings = await stopAvailability.refresh();
-                if (!isCurrent() || !currentSettings || currentSettings.maintenance_mode) return;
+                const [currentSettings, currentVisibility] = await Promise.all([stopAvailability.refresh(), stopVisibility.refresh()]);
+                if (!isCurrent() || !currentSettings || currentSettings.maintenance_mode || !currentVisibility || !moduleVisible(currentVisibility, route)) return;
               }
               const searchValue = routeInfo.search || (route === 'services' ? query : '');
-              const data = await services.content.list(routeInfo.table, { publicOnly: true, page, search: searchValue, categories: routeInfo.categories || [], alphabetical: routeInfo.alphabetical === true });
+              const hiddenGroups = hiddenDirectoryGroups(visibility);
+              const categories = (routeInfo.categories || []).filter(category => !hiddenGroups.includes(category));
+              const excludeCategories = [...(routeInfo.excludeCategories || []), ...hiddenGroups];
+              const data = routeInfo.categories?.length && !categories.length
+                ? { rows: [], count: 0 }
+                : await services.content.list(routeInfo.table, { publicOnly: true, page, search: searchValue, categories, excludeCategories, alphabetical: routeInfo.alphabetical === true });
               if (!isCurrent()) return;
               if (routeInfo.roster) {
                 // Rebuild the lightweight hierarchy after each page so position tiers stay ordered.
@@ -153,9 +171,23 @@ export async function startPublicPage({ services: injectedServices } = {}) {
       } catch (error) {
         if (!isCurrent()) return;
         status.textContent = error.message;
-        if (!publicRoute(route) && route !== 'home') root.replaceChildren(publicHeader(settings), el('p', error.message, { class: 'container notice' }));
+        if (!publicRoute(route) && route !== 'home') root.replaceChildren(publicHeader(settings, 'home', visibility), el('p', error.message, { class: 'container notice' }));
       }
     }, 'home'); };
+    stopVisibility = watchVisibility(visibilityService, (next, error) => {
+      visibility = next; visibilityError = error;
+      // A changed switch rebuilds the current hash route; no full-page reload is required.
+      if (settings?.maintenance_mode === false) {
+        stopRouter?.(); stopRouter = undefined; homeCleanup?.(); homeCleanup = undefined;
+        currentRoute = undefined; homeData = null; root.replaceChildren(); status.textContent = '';
+        if (next) openPublic();
+        else root.replaceChildren(unavailableSurface(settings, { error, retry: () => stopVisibility.refresh() }));
+      }
+    });
+    await stopVisibility.refresh();
+    if (!visibility) {
+      root.replaceChildren(unavailableSurface({}, { error: visibilityError, retry: () => stopVisibility.refresh() }));
+    }
     stopAvailability = watchAvailability(services.settings, (next, error) => {
       // Stopping the router invalidates in-flight content responses before hiding the old view.
       stopRouter?.(); stopRouter = undefined; homeCleanup?.(); homeCleanup = undefined;
@@ -163,7 +195,8 @@ export async function startPublicPage({ services: injectedServices } = {}) {
       if (!next || next.maintenance_mode) {
         root.replaceChildren(maintenanceSurface(next || {}, { error, retry: () => stopAvailability.refresh() }));
         document.title = next ? 'Maintenance — Barangay ' + next.barangay_name : 'Website temporarily unavailable';
-      } else openPublic();
+      } else if (visibility) openPublic();
+      else root.replaceChildren(unavailableSurface(next, { error: visibilityError, retry: () => stopVisibility.refresh() }));
     });
     await stopAvailability.refresh();
     if (disposed) return;

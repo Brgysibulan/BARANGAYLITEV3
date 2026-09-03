@@ -16,10 +16,9 @@ export function editFields(table, original = {}) {
     const field = { key, required: key === (def?.title || 'control_number') || (['pages', 'announcements'].includes(table) && key === 'slug') || (table === 'officials' && key === 'position') || (table === 'directory_entries' && key === 'category') };
     if (/^is_/.test(key)) Object.assign(field, { type: 'checkbox', default: false });
     else if (table === 'directory_entries' && key === 'category') {
-      // Preserve an older custom category while guiding new records into public groups.
-      const options = [...DIRECTORY_CATEGORY_OPTIONS];
-      if (original.category && !options.includes(original.category)) options.unshift(original.category);
-      Object.assign(field, { options, help: 'This controls whether the record appears under Contacts, Barangay Staff, or Barangay Functionaries.' });
+      // A datalist suggests known values without forcing another barangay's designations.
+      // The exact saved text becomes the public heading for a functionary group.
+      Object.assign(field, { suggestions: DIRECTORY_CATEGORY_OPTIONS, help: 'Use Contact, Barangay Staff, or type the exact functionary group heading used by your barangay.' });
     }
     else if (key === 'status') Object.assign(field, { options: ['ACTIVE', 'INACTIVE', 'EXPIRED'], default: 'ACTIVE' });
     else if (key === 'sort_order') Object.assign(field, { type: 'number', default: 0 });
