@@ -25,8 +25,9 @@ This preserves the original website-level maintenance contract. It is not a new 
 
 ## Staff editing / ID / cover update
 
-- `staff/content-screen.js`: content/ID table, search, pagination, edit dialogs and confirmed record deletion.
-- `staff/settings-screen.js`: singleton settings and five-cover draft/publish flow. Photos are compressed in `media/images.js` before upload.
+- `staff/content-screen.js`: content/ID Create, Read, Update, and Delete from one searchable screen. Read uses a details dialog; writes remain allowlisted by `data/contracts.js`; deletion uses an in-page confirmation before the existing service/RLS call.
+- `staff/ui.js`: shared typed forms, record details, mobile record cards, and in-page action confirmations. Save errors remain inside the open editor so the draft is not lost.
+- `staff/settings-screen.js`: singleton settings and five-cover draft/publish flow with in-page confirmations. Photos are compressed in `media/images.js` before upload.
 - `staff/dashboard.js`: current counts and recent stored updates. Missing counts are not silently treated as zero.
 - `staff/qr.js`: local PNG generation; existing tokens are preserved. `public/verify.js` uses the original manual and QR RPCs.
 - `data/covers.js`: up to five public slides in `design_theme.brgyweblitev3_covers`. Atomic JSON comparison prevents a cover save from overwriting a concurrent theme edit.
