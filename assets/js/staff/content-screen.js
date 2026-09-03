@@ -3,7 +3,7 @@
  * Depends on: existing data/storage services, shared form components, and lazy QR/image tools.
  * Debug: errors stay beside the operation; page generations prevent stale request repainting.
  */
-import { CONTENT, VERIFICATION_FIELDS } from '../data/contracts.js';
+import { CONTENT, VERIFICATION_FIELDS, DIRECTORY_CATEGORY_OPTIONS } from '../data/contracts.js';
 import { element as el } from '../core/dom.js';
 import { button, heading, badge, recordTable, editorDialog, confirmationDialog, detailsDialog, dateText } from './ui.js';
 import { fullName, idStatus } from '../data/id-model.js';
@@ -15,6 +15,12 @@ export function editFields(table, original = {}) {
   return keys.filter(key => !['file_name', 'file_type', 'file_size'].includes(key)).map(key => {
     const field = { key, required: key === (def?.title || 'control_number') || (['pages', 'announcements'].includes(table) && key === 'slug') || (table === 'officials' && key === 'position') || (table === 'directory_entries' && key === 'category') };
     if (/^is_/.test(key)) Object.assign(field, { type: 'checkbox', default: false });
+    else if (table === 'directory_entries' && key === 'category') {
+      // Preserve an older custom category while guiding new records into public groups.
+      const options = [...DIRECTORY_CATEGORY_OPTIONS];
+      if (original.category && !options.includes(original.category)) options.unshift(original.category);
+      Object.assign(field, { options, help: 'This controls whether the record appears under Contacts, Barangay Staff, or Barangay Functionaries.' });
+    }
     else if (key === 'status') Object.assign(field, { options: ['ACTIVE', 'INACTIVE', 'EXPIRED'], default: 'ACTIVE' });
     else if (key === 'sort_order') Object.assign(field, { type: 'number', default: 0 });
     else if (['date_acquired', 'expiration_date', 'document_date'].includes(key)) field.type = 'date';
@@ -23,7 +29,13 @@ export function editFields(table, original = {}) {
     else if (['excerpt', 'content', 'summary', 'description', 'requirements', 'bio', 'caption'].includes(key)) Object.assign(field, { type: 'textarea', wide: true });
     if (key === 'slug') field.help = 'Stable short page name, for example barangay-history. Keep existing slugs when editing.';
     return field;
-  }).concat(def?.bucket ? [{ key: 'upload', label: original.id ? 'Upload replacement file (optional)' : 'Upload file (optional)', type: 'file', wide: true, accept: def.bucket === 'gallery-media' ? 'image/jpeg,image/png,image/webp,image/gif' : '.pdf,.doc,.docx,.xls,.xlsx', help: def.bucket === 'gallery-media' ? 'Photos are resized and compressed before upload. GIFs become still images.' : 'Maximum 10 MB. Existing linked files are retained.' }] : []);
+  }).concat(def?.bucket ? [{
+    key: 'upload',
+    label: table === 'directory_entries' ? (original.id ? 'Upload replacement photo or icon (optional)' : 'Upload photo or icon (optional)') : (original.id ? 'Upload replacement file (optional)' : 'Upload file (optional)'),
+    type: 'file', wide: true,
+    accept: def.bucket === 'gallery-media' ? 'image/jpeg,image/png,image/webp,image/gif' : '.pdf,.doc,.docx,.xls,.xlsx',
+    help: table === 'directory_entries' ? 'Upload a portrait or image icon. If left blank, the public page uses a neutral profile icon.' : def.bucket === 'gallery-media' ? 'Photos are resized and compressed before upload. GIFs become still images.' : 'Maximum 10 MB. Existing linked files are retained.',
+  }] : []);
 }
 function localDateTime(value) { if (!value) return ''; const d = new Date(value); if (Number.isNaN(d.getTime())) return ''; return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
 

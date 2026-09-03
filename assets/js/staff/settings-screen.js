@@ -44,7 +44,7 @@ export function mountSettings(root, services, isCurrent) {
     const enabled = settings.maintenance_mode === true;
     const panel = el('section', '', { class: 'dashboard-panel maintenance-control', 'aria-label': 'Maintenance mode controls' });
     panel.append(el('span', enabled ? 'ON · Public website paused' : 'OFF · Public website live', { class: `status-badge ${enabled ? 'warning' : 'good'}` }), el('h2', 'Maintenance mode'),
-      el('p', 'When enabled, all public website pages and ID verification show the maintenance notice. Existing staff login and workspaces remain accessible.'),
+      el('p', 'When enabled, all public website pages and ID verification show the maintenance notice. The Admin Portal and authenticated dashboards remain accessible.'),
       el('p', 'Already-open public pages recheck on focus, navigation, and at least once per minute while visible.', { class: 'muted compact' }));
     const actions = el('div', '', { class: 'cluster' });
     actions.append(button(enabled ? 'Disable maintenance mode' : 'Enable maintenance mode', async () => {

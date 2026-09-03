@@ -29,19 +29,51 @@ export function publicHeader(settings, route = 'home') {
   utilityInner.append(el('span', 'OFFICIAL BARANGAY WEBSITE'), el('span', 'PUBLIC INFORMATION & SERVICES'));
   utility.append(utilityInner);
   const masthead = el('div', '', { class: 'masthead container' });
-  masthead.append(brand(settings, '#home'), el('a', 'Staff portal ↗', { href: 'login.html', class: 'button' }));
+  masthead.append(brand(settings, '#home'));
   const nav = el('nav', '', { class: 'public-nav', 'aria-label': 'Public information' });
   const links = el('div', '', { class: 'container' });
-  [['home', 'Home'], ['services', 'Services'], ['announcements', 'Announcements'], ['officials', 'Officials'], ['disclosures', 'Transparency'], ['directory_entries', 'Contact']].forEach(([key, label]) => links.append(el('a', label, { href: `#${key}`, 'aria-current': key === route ? 'page' : null })));
-  links.append(el('a', 'Verify ID', { href: 'verify.html', 'aria-current': route === 'verify' ? 'page' : null }));
+  const navLink = (href, label, active = false) => el('a', label, { href, 'aria-current': active ? 'page' : null });
+  const navMenu = (label, items, activeRoutes) => {
+    const active = activeRoutes.includes(route);
+    const menu = el('details', '', { class: 'nav-menu' });
+    const panel = el('div', '', { class: 'nav-menu-panel' });
+    items.forEach(([href, text, key]) => panel.append(navLink(href, text, route === key)));
+    menu.append(el('summary', label, { 'aria-current': active ? 'page' : null }), panel);
+    return menu;
+  };
+  links.append(
+    navLink('#home', 'Home', route === 'home'),
+    navLink('#announcements', 'News & Updates', route === 'announcements'),
+    navMenu('Services', [
+      ['#services', 'Barangay Services', 'services'],
+      ['verify.html', 'Verify Barangay ID', 'verify'],
+      ['#appointment', 'Request Appointment', 'appointment'],
+      ['#forms', 'Downloadable Forms', 'forms'],
+    ], ['services', 'verify', 'appointment', 'forms']),
+    navMenu('About', [
+      ['#contact', 'Contact Us', 'contact'],
+      ['#pages', 'Barangay Profile', 'pages'],
+    ], ['contact', 'pages']),
+    navMenu('Directory', [
+      ['#officials', 'Barangay Officials', 'officials'],
+      ['#staff', 'Barangay Staff', 'staff'],
+      ['#functionaries', 'Barangay Functionaries', 'functionaries'],
+    ], ['officials', 'staff', 'functionaries']),
+    navMenu('Admin Portal', [
+      ['login.html?next=settings', 'System Admin Login', 'system-admin'],
+      ['login.html?next=pages', 'Content Admin Login', 'content-admin'],
+    ], ['system-admin', 'content-admin'])
+  );
   nav.append(links); header.append(utility, masthead, nav); return header;
 }
 
 /** Cards retain module-specific information; no invented dates, counts, processing details, or contacts. */
 export function contentCard(table, row) {
-  const card = el('article', '', { class: 'content-card' });
+  const directory = table === 'directory_entries';
+  const card = el('article', '', { class: directory ? 'content-card directory-card' : 'content-card' });
   const imageUrl = https(row.cover_url || row.photo_url || row.image_url);
-  if (imageUrl) card.append(el('img', '', { src: imageUrl, alt: row.title || row.full_name || row.name || '', loading: 'lazy' }));
+  if (imageUrl) card.append(el('img', '', { src: imageUrl, alt: row.title || row.full_name || row.name || '', loading: 'lazy', class: directory ? 'directory-avatar' : null }));
+  else if (directory) card.append(el('span', '', { class: 'directory-avatar directory-icon', 'aria-label': 'No photo uploaded' }));
   const category = row.category || row.position || row.album || (table === 'announcements' ? 'Barangay advisory' : null);
   if (category) card.append(el('p', category, { class: 'eyebrow' }));
   card.append(el('h3', row.title || row.name || row.full_name || 'Barangay information'));
@@ -91,9 +123,9 @@ export function publicFooter(settings, { preview = false } = {}) {
     items.forEach(([href, label]) => { const item = el('li'); item.append(el('a', label, { href })); list.append(item); });
     nav.append(list); return nav;
   };
-  const explore = linkColumn('Explore', [['#home', 'Home'], ['#pages', 'About the barangay'], ['#gallery_items', 'Community gallery']]);
-  const information = linkColumn('Public information', [['#announcements', 'News & advisories'], ['#officials', 'Barangay officials'], ['#disclosures', 'Transparency & reports']]);
-  const services = linkColumn('Resident services', [['#services', 'Barangay services'], ['#forms', 'Downloadable forms'], ['verify.html', 'Verify Barangay ID'], ['#directory_entries', 'Contact directory']]);
+  const explore = linkColumn('Explore', [['#home', 'Home'], ['#announcements', 'News & Updates'], ['#pages', 'Barangay Profile']]);
+  const information = linkColumn('Directory', [['#officials', 'Barangay Officials'], ['#staff', 'Barangay Staff'], ['#functionaries', 'Barangay Functionaries']]);
+  const services = linkColumn('Resident services', [['#services', 'Barangay Services'], ['#appointment', 'Request Appointment'], ['#forms', 'Downloadable Forms'], ['verify.html', 'Verify Barangay ID']]);
   main.append(identity, explore, information, services);
 
   const bottom = el('div', '', { class: 'footer-bottom' });

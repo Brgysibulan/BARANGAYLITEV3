@@ -25,13 +25,14 @@ This preserves the original website-level maintenance contract. It is not a new 
 
 ## Staff editing / ID / cover update
 
-- `staff/content-screen.js`: content/ID Create, Read, Update, and Delete from one searchable screen. Read uses a details dialog; writes remain allowlisted by `data/contracts.js`; deletion uses an in-page confirmation before the existing service/RLS call.
+- `staff/content-screen.js`: content/ID Create, Read, Update, and Delete from one searchable screen. Directory Records provides the approved Contact, Barangay Staff, and functionary categories plus photo/icon upload. Read uses a details dialog; writes remain allowlisted by `data/contracts.js`; deletion uses an in-page confirmation before the existing service/RLS call.
 - `staff/ui.js`: shared typed forms, record details, mobile record cards, and in-page action confirmations. Save errors remain inside the open editor so the draft is not lost.
 - `staff/settings-screen.js`: singleton settings and five-cover draft/publish flow with in-page confirmations. Photos are compressed in `media/images.js` before upload.
 - `staff/dashboard.js`: current counts and recent stored updates. Missing counts are not silently treated as zero.
 - `staff/qr.js`: local PNG generation; existing tokens are preserved. `public/verify.js` uses the original manual and QR RPCs.
 - `data/covers.js`: up to five public slides in `design_theme.brgyweblitev3_covers`. Atomic JSON comparison prevents a cover save from overwriting a concurrent theme edit.
 - `design/public-renderer.js` nests those same saved covers inside `.hero` as `.hero-cover`; `design-system.css` darkens the image for readable hero text. No cover record, URL, bucket, or CRUD path is duplicated. If no cover is saved, the plain hero fallback remains.
+- `public/app.js` maps Staff and Functionaries routes back to filtered `directory_entries`. If a record appears in the wrong public directory, check its exact category against `DIRECTORY_GROUPS` in `data/contracts.js`, then check `is_active`.
 - `data/usage.js`: existing Storage metadata and public GitHub REST metadata only. No secret key or privileged backend was added.
 
 When a create/save request fails after upload, close and refresh before retrying to avoid duplicates. Uploaded files are retained when a save outcome is uncertain. Existing files are not automatically deleted because they may have other references. Billing/quota/bandwidth/database size are deliberately unavailable, not zero.
