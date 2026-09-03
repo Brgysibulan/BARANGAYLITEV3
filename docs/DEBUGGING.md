@@ -30,6 +30,7 @@ This preserves the original website-level maintenance contract. It is not a new 
 - `staff/dashboard.js`: current counts and recent stored updates. Missing counts are not silently treated as zero.
 - `staff/qr.js`: local PNG generation; existing tokens are preserved. `public/verify.js` uses the original manual and QR RPCs.
 - `data/covers.js`: up to five public slides in `design_theme.brgyweblitev3_covers`. Atomic JSON comparison prevents a cover save from overwriting a concurrent theme edit.
+- `design/public-renderer.js` nests those same saved covers inside `.hero` as `.hero-cover`; `design-system.css` darkens the image for readable hero text. No cover record, URL, bucket, or CRUD path is duplicated. If no cover is saved, the plain hero fallback remains.
 - `data/usage.js`: existing Storage metadata and public GitHub REST metadata only. No secret key or privileged backend was added.
 
 When a create/save request fails after upload, close and refresh before retrying to avoid duplicates. Uploaded files are retained when a save outcome is uncertain. Existing files are not automatically deleted because they may have other references. Billing/quota/bandwidth/database size are deliberately unavailable, not zero.

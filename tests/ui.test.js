@@ -11,11 +11,12 @@ import { verificationResult } from '../assets/js/public/verify.js';
 import { mountStudio } from '../assets/js/design/studio.js';
 import { presetDesign } from '../assets/js/design/model.js';
 import { accessSurface } from '../assets/js/design/access-renderer.js';
-import { contentCard } from '../assets/js/design/public-renderer.js';
+import { contentCard, publicHome } from '../assets/js/design/public-renderer.js';
 import { showRecords } from '../assets/js/core/dom.js';
 const { window } = parseHTML('<!doctype html><html><body></body></html>');
 globalThis.window = window; globalThis.document = window.document; globalThis.Node = window.Node;
 globalThis.confirm = () => true;
+globalThis.matchMedia = () => ({ matches: true });
 window.HTMLElement.prototype.showModal = function () { this.setAttribute('open', ''); };
 window.HTMLElement.prototype.close = function () { this.removeAttribute('open'); };
 // Linkedom omits the native select.value setter; emulate option selection for unit tests.
@@ -103,4 +104,20 @@ test('English interface copy does not translate stored barangay content', () => 
   assert.equal(showRecords([], []).textContent, 'No records yet.');
   assert.match(accessSurface('login').textContent, /Use your existing email and password/);
   assert.match(contentCard('announcements', { title: 'Pabatid sa mga residente', excerpt: 'Libreng serbisyo' }).textContent, /Pabatid sa mga residenteLibreng serbisyo/);
+});
+test('saved Dashboard cover is reused inside the public hero without a duplicate image source', () => {
+  const cover = { id: 'barangay-hall', url: 'https://example.com/barangay-hall.webp', alt: 'Barangay hall', caption: 'Public service center' };
+  const home = publicHome({ barangay_name: 'Sibulan', hero_title: 'Local Government of Sibulan' }, {}, presetDesign(), { preview: true, covers: [cover] });
+  const hero = home.querySelector('.hero');
+  assert.ok(hero.classList.contains('has-cover'));
+  assert.equal(hero.querySelector('.hero-cover img').getAttribute('src'), cover.url);
+  assert.equal(home.querySelectorAll('.cover-slideshow').length, 1);
+  assert.equal(hero.parentElement.querySelector(':scope > .cover-slideshow'), null);
+  home.dispose();
+});
+test('homepage keeps the existing plain hero fallback when no cover is saved', () => {
+  const home = publicHome({ barangay_name: 'Sibulan', hero_title: 'Local Government of Sibulan' }, {}, presetDesign(), { preview: true });
+  const hero = home.querySelector('.hero');
+  assert.equal(hero.classList.contains('has-cover'), false);
+  assert.equal(home.querySelector('.cover-slideshow'), null);
 });

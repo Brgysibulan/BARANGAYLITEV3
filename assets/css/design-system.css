@@ -357,6 +357,18 @@ input[type=checkbox] { width:22px; height:22px; min-height:22px; accent-color:va
 .slideshow-controls { display:flex; align-items:center; justify-content:flex-end; gap:.7rem; background:var(--paper); padding:.65rem 1rem; border:1px solid var(--line); }
 .slideshow-controls button { font-size:.74rem; min-height:38px; }
 .slideshow-controls span { font-size:.78rem; }
+/* Saved Dashboard covers are visual layers inside the public hero. The URL still
+   comes only from data/covers.js; without a saved cover the original hero remains. */
+.hero.has-cover { position:relative; isolation:isolate; align-items:center; min-height:520px; margin-top:2rem; padding:4.5rem clamp(2rem,5vw,4.5rem) 6rem; border-radius:var(--radius); overflow:hidden; }
+.hero.has-cover .hero-cover { position:absolute; inset:0; z-index:0; margin:0; border-radius:0; }
+.hero.has-cover .hero-cover > img { width:100%; height:100%; aspect-ratio:auto; filter:brightness(.42) saturate(.88); }
+.hero.has-cover .hero-copy,.hero.has-cover .resident-desk { position:relative; z-index:1; }
+.hero.has-cover .hero-copy { color:#fff; text-shadow:0 2px 18px #061612b8; }
+.hero.has-cover .hero-copy > p:not(.eyebrow),.hero.has-cover .hero-copy .eyebrow { color:#fff; }
+.hero.has-cover .quick-links .button:not(.primary) { color:#fff; background:#ffffff18; border-color:#ffffffa8; text-shadow:none; }
+.hero.has-cover .resident-desk { background:#102e29e8; background:color-mix(in srgb,var(--secondary) 84%,transparent); backdrop-filter:blur(8px); }
+.hero.has-cover .hero-cover .cover-caption { z-index:1; bottom:1rem; left:1rem; max-width:calc(100% - 340px); border-radius:var(--radius); }
+.hero.has-cover .hero-cover .slideshow-controls { position:absolute; right:1rem; bottom:1rem; z-index:1; border:0; border-radius:var(--radius); box-shadow:0 8px 24px #06161252; }
 .verify-main { padding-block:3rem; max-width:1100px; }
 .verify-main h1 { font-size:clamp(2rem,4vw,2.8rem); }
 .verify-options { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-top:2rem; }
@@ -389,6 +401,10 @@ input[type=checkbox] { width:22px; height:22px; min-height:22px; accent-color:va
   [data-theme] .workspace-main,.workspace-main { grid-row:3; grid-column:1; padding:1.3rem 1rem; }
   .verify-options { grid-template-columns:1fr; }
   .cover-slideshow > img { aspect-ratio:16/10; }
+  .hero.has-cover { min-height:600px; padding:2.5rem 1.5rem 7rem; }
+  .hero.has-cover .hero-cover > img { aspect-ratio:auto; }
+  .hero.has-cover .hero-cover .cover-caption { bottom:4.8rem; max-width:calc(100% - 2rem); }
+  .hero.has-cover .hero-cover .slideshow-controls { right:auto; left:1rem; }
 }
 @media(max-width:520px) {
   .metric-grid { gap:.65rem; } .metric-card { padding:1rem; } .metric-value { font-size:1.9rem; }
