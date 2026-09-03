@@ -12,6 +12,7 @@ import { mountStudio } from '../assets/js/design/studio.js';
 import { presetDesign } from '../assets/js/design/model.js';
 import { accessSurface } from '../assets/js/design/access-renderer.js';
 import { contentCard, publicHome, publicFooter } from '../assets/js/design/public-renderer.js';
+import { CAROUSEL_INTERVAL_MS } from '../assets/js/public/carousel.js';
 import { showRecords } from '../assets/js/core/dom.js';
 const { window } = parseHTML('<!doctype html><html><body></body></html>');
 globalThis.window = window; globalThis.document = window.document; globalThis.Node = window.Node;
@@ -136,6 +137,21 @@ test('saved Dashboard cover is reused inside the public hero without a duplicate
   assert.equal(hero.querySelector('.hero-cover img').getAttribute('src'), cover.url);
   assert.equal(home.querySelectorAll('.cover-slideshow').length, 1);
   assert.equal(hero.parentElement.querySelector(':scope > .cover-slideshow'), null);
+  home.dispose();
+});
+test('hero cover advances by clicking the color layer without visible controls and uses five-second autoplay', () => {
+  const covers = [
+    { id: 'hall', url: 'https://example.com/hall.webp', alt: 'Barangay hall' },
+    { id: 'community', url: 'https://example.com/community.webp', alt: 'Community activity' },
+  ];
+  const home = publicHome({ barangay_name: 'Sibulan' }, {}, presetDesign(), { preview: true, covers });
+  const hero = home.querySelector('.hero');
+  const image = hero.querySelector('.hero-cover img');
+  assert.equal(CAROUSEL_INTERVAL_MS, 5000);
+  assert.equal(hero.querySelector('.slideshow-controls'), null);
+  assert.equal(image.getAttribute('src'), covers[0].url);
+  hero.dispatchEvent(new window.Event('click', { bubbles: true }));
+  assert.equal(image.getAttribute('src'), covers[1].url);
   home.dispose();
 });
 test('homepage keeps the existing plain hero fallback when no cover is saved', () => {
