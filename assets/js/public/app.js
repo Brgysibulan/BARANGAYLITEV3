@@ -10,7 +10,7 @@ import { startRouter } from '../core/router.js';
 import { watchDesign } from '../design/runtime.js';
 import { beginDesignLoad, designFailed } from '../design/boot.js';
 import { presetDesign } from '../design/model.js';
-import { publicHome, publicHeader, publicFooter, contentCard } from '../design/public-renderer.js';
+import { publicHome, publicHeader, publicFooter, contentCard, officialsRoster } from '../design/public-renderer.js';
 import { watchAvailability, maintenanceSurface } from './availability.js';
 import { watchCovers } from './carousel.js';
 import { installPhotoViewer } from './photo-viewer.js';
@@ -22,7 +22,7 @@ const PUBLIC_ROUTES = Object.freeze({
   forms: { table: 'forms', title: 'Downloadable Forms' },
   contact: { title: 'Contact Us', contact: true },
   pages: { table: 'pages', title: 'Barangay Profile', intro: 'Published barangay profile and development information based on the BDP 2026.' },
-  officials: { table: 'officials', title: 'Barangay Officials' },
+  officials: { table: 'officials', title: 'Barangay Officials', roster: true },
   staff: { table: 'directory_entries', title: 'Barangay Staff', categories: DIRECTORY_GROUPS.staff, alphabetical: true, grouped: true, intro: 'Published personnel assigned to the Barangay Local Government Unit.' },
   functionaries: { table: 'directory_entries', title: 'Barangay Functionaries', categories: DIRECTORY_GROUPS.functionaries, alphabetical: true, grouped: true, intro: 'Published BHW, BNS, Tanod, DCW, Lupon, monitoring, enforcement, and sectoral functionaries.' },
   disclosures: { table: 'disclosures', title: 'Transparency & Reports' },
@@ -101,8 +101,9 @@ export async function startPublicPage({ services: injectedServices } = {}) {
           const query = new URLSearchParams(location.hash.split('?')[1] || '').get('q') || '';
           if (route === 'services') main.append(el('p', 'Service information only. This website does not collect online payments. Complete any required transaction directly at the Barangay Hall and request an official receipt.', { class: 'notice service-payment-notice' }));
           const summary = el('p', '', { role: 'status', class: 'muted' });
-          const cards = el('div', '', { class: routeInfo.grouped ? 'directory-groups' : 'cards' });
+          const cards = el('div', '', { class: routeInfo.roster ? 'officials-roster-host' : routeInfo.grouped ? 'directory-groups' : 'cards' });
           const groups = new Map();
+          const loadedRows = [];
           const more = el('button', 'Load more', { type: 'button' });
           if (route === 'services') {
             const search = el('form', '', { role: 'search', class: 'service-search' });
@@ -132,7 +133,10 @@ export async function startPublicPage({ services: injectedServices } = {}) {
               const searchValue = routeInfo.search || (route === 'services' ? query : '');
               const data = await services.content.list(routeInfo.table, { publicOnly: true, page, search: searchValue, categories: routeInfo.categories || [], alphabetical: routeInfo.alphabetical === true });
               if (!isCurrent()) return;
-              data.rows.forEach(appendRow);
+              if (routeInfo.roster) {
+                // Rebuild the lightweight hierarchy after each page so position tiers stay ordered.
+                loadedRows.push(...data.rows); cards.replaceChildren(officialsRoster(loadedRows));
+              } else data.rows.forEach(appendRow);
               if (page === 0 && !data.rows.length) cards.append(el('p', route === 'appointment' ? 'Appointment instructions have not been published yet. Please use the Contact Us page to reach the Barangay Hall.' : query ? 'No matching published services.' : 'No published records in this section yet.', { class: 'empty' }));
               page++; summary.textContent = data.count + ' published ' + ((query || routeInfo.search) ? 'matching ' : '') + 'records'; more.hidden = page * 50 >= data.count;
             } finally { more.disabled = false; }
