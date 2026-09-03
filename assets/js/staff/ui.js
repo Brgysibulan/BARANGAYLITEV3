@@ -44,8 +44,52 @@ export function recordTable(rows, columns, actions) {
   const table = el('table', '', { class: 'records-table' }); table.append(el('caption', `${rows.length} records on this page`, { class: 'sr-only' }));
   const head = el('thead'); const hr = el('tr'); columns.forEach(col => hr.append(el('th', col.label || labelFor(col.key), { scope: 'col' }))); hr.append(el('th', 'Actions', { scope: 'col' })); head.append(hr);
   const body = el('tbody');
-  rows.forEach(row => { const tr = el('tr'); columns.forEach(col => { const td = el('td'); const value = col.render ? col.render(row) : row[col.key]; if (value instanceof Node) td.append(value); else td.textContent = String(value ?? '—'); tr.append(td); }); const td = el('td'); const group = el('div', '', { class: 'row-actions' }); group.append(...actions(row)); td.append(group); tr.append(td); body.append(tr); });
+  rows.forEach(row => { const tr = el('tr'); columns.forEach(col => { const td = el('td', '', { 'data-label': col.label || labelFor(col.key) }); const value = col.render ? col.render(row) : row[col.key]; if (value instanceof Node) td.append(value); else td.textContent = String(value ?? '—'); tr.append(td); }); const td = el('td', '', { 'data-label': 'Actions' }); const group = el('div', '', { class: 'row-actions' }); group.append(...actions(row)); td.append(group); tr.append(td); body.append(tr); });
   table.append(head, body); wrap.append(table); return wrap;
+}
+
+/** Use an in-page confirmation instead of browser popups for explicit admin actions. */
+export function confirmationDialog({ title, description, confirmLabel = 'Confirm', destructive = false }) {
+  return new Promise(resolve => {
+    const dialog = el('dialog', '', { class: 'edit-dialog confirm-dialog', 'aria-label': title });
+    const actions = el('div', '', { class: 'form-actions' });
+    let settled = false;
+    const finish = result => {
+      if (settled) return;
+      settled = true; dialog.close(); dialog.remove(); resolve(result);
+    };
+    const cancel = button('Cancel', () => finish(false));
+    const confirm = el('button', confirmLabel, { type: 'button', class: destructive ? 'danger' : 'primary' });
+    confirm.addEventListener('click', () => finish(true));
+    dialog.append(el('div', '', { class: 'dialog-heading' }), el('p', description, { class: 'muted' }), actions);
+    dialog.querySelector('.dialog-heading').append(el('h2', title));
+    actions.append(cancel, confirm);
+    dialog.addEventListener('cancel', event => { event.preventDefault(); finish(false); });
+    document.body.append(dialog); dialog.showModal(); cancel.focus();
+  });
+}
+
+/** Read is a first-class CRUD action; operators can inspect every field before editing. */
+export function detailsDialog({ title, fields, record }) {
+  const dialog = el('dialog', '', { class: 'edit-dialog details-dialog', 'aria-label': title });
+  const list = el('dl', '', { class: 'record-details' });
+  fields.filter(field => field.key !== 'upload').forEach(field => {
+    const value = record[field.key];
+    list.append(
+      el('dt', field.label || labelFor(field.key)),
+      el('dd', typeof value === 'boolean' ? (value ? 'Yes' : 'No') : String(value ?? '').trim() || 'Not set')
+    );
+  });
+  let closed = false;
+  const close = () => { if (closed) return; closed = true; dialog.close(); dialog.remove(); };
+  const actions = el('div', '', { class: 'form-actions' });
+  actions.append(button('Close', close, true));
+  dialog.append(el('div', '', { class: 'dialog-heading' }), list, actions);
+  dialog.querySelector('.dialog-heading').append(el('h2', title));
+  dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
+  document.body.append(dialog); dialog.showModal();
+  close.canLeave = () => true;
+  return close;
 }
 
 /** Fields use typed controls; optional empty values are null, booleans remain booleans. */
