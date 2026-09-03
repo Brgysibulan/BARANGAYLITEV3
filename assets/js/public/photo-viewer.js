@@ -1,7 +1,7 @@
 /**
- * Purpose: enlarge published personnel photos with accessible previous/next navigation.
- * Depends on: personnel images marked by public-renderer.js and the browser's native dialog element.
- * Debug: inspect data-photo-viewer attributes; placeholder icons are intentionally excluded.
+ * Purpose: enlarge published personnel and gallery photos with accessible previous/next navigation.
+ * Depends on: card images marked by public-renderer.js and the browser's native dialog element.
+ * Debug: inspect data-photo-viewer/group attributes; placeholder icons are intentionally excluded.
  */
 
 const PHOTO_SELECTOR = 'img[data-photo-viewer="true"]';
@@ -49,9 +49,11 @@ export function installPhotoViewer(root) {
   frame.append(topbar, stage, controls); dialog.append(frame); document.body.append(dialog);
 
   let index = 0;
+  let activeGroup = '';
   let opener;
   let touchStartX;
-  const photos = () => [...root.querySelectorAll(PHOTO_SELECTOR)];
+  // Keep gallery navigation inside the gallery instead of mixing it with personnel photos on Home.
+  const photos = () => [...root.querySelectorAll(PHOTO_SELECTOR)].filter(node => (node.dataset.photoGroup || '') === activeGroup);
   const sourceUrl = node => node.currentSrc || node.getAttribute('src') || node.src;
 
   const render = () => {
@@ -73,6 +75,7 @@ export function installPhotoViewer(root) {
     opener?.focus?.(); opener = undefined;
   };
   const open = source => {
+    activeGroup = source.dataset.photoGroup || '';
     const items = photos();
     const selected = items.indexOf(source);
     if (selected < 0) return;
