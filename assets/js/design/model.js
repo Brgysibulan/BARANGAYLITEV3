@@ -5,14 +5,14 @@
  */
 export const DESIGN_KEY = 'brgyweblitev3';
 export const PRESETS = Object.freeze({
-  'national-authority': { name: 'National Authority', description: 'Formal masthead. Notices first. Clear public accountability.', primary: '#153957', accent: '#d6ad56', font: 'classic', corners: 'square', width: 'wide', sidebar: 'dark', sectionOrder: ['announcements', 'services', 'disclosures', 'officials', 'pages', 'forms', 'directory_entries', 'gallery_items'] },
-  'executive-civic': { name: 'Executive Civic', description: 'A focused announcement, quick links, and a compact civic overview.', primary: '#243e68', accent: '#e1bb76', font: 'humanist', corners: 'soft', width: 'wide', sidebar: 'light', heroAlign: 'center', sectionOrder: ['services', 'officials', 'announcements', 'pages', 'disclosures', 'forms', 'gallery_items', 'directory_entries'] },
-  'public-service': { name: 'Public Service', description: 'Service search up front. Forms and requirements within reach.', primary: '#075c70', accent: '#eac35b', font: 'humanist', corners: 'soft', width: 'wide', sidebar: 'dark', sectionOrder: ['services', 'forms', 'announcements', 'directory_entries', 'pages', 'disclosures', 'officials', 'gallery_items'] },
-  institutional: { name: 'Institutional', description: 'A traditional information desk with a two-column editorial layout.', primary: '#642a36', accent: '#d6b777', font: 'classic', corners: 'square', width: 'boxed', sidebar: 'light', sectionOrder: ['announcements', 'pages', 'officials', 'services', 'disclosures', 'forms', 'directory_entries', 'gallery_items'] },
-  'community-showcase': { name: 'Community Showcase', description: 'Visual community stories, gallery highlights, and welcoming public information.', primary: '#3d5d44', accent: '#d6a84b', font: 'friendly', corners: 'round', width: 'full', sidebar: 'dark', heroAlign: 'center', sectionOrder: ['gallery_items', 'announcements', 'officials', 'services', 'pages', 'forms', 'directory_entries', 'disclosures'] },
-  'transparency-first': { name: 'Transparency First', description: 'Disclosures and advisories lead a structured accountability-focused page.', primary: '#193c64', accent: '#cda548', font: 'classic', corners: 'square', width: 'wide', sidebar: 'dark', sectionOrder: ['disclosures', 'announcements', 'services', 'officials', 'directory_entries', 'forms', 'pages', 'gallery_items'] },
-  'civic-minimal': { name: 'Civic Minimal', description: 'Quiet typography, restrained panels, and a compact information-first rhythm.', primary: '#263936', accent: '#d59a63', font: 'contemporary', corners: 'soft', width: 'boxed', sidebar: 'light', sectionOrder: ['pages', 'services', 'announcements', 'forms', 'officials', 'disclosures', 'gallery_items', 'directory_entries'] },
-  'modern-lgu': { name: 'Modern LGU', description: 'A confident split hero with resident actions and community stories.', primary: '#164b3f', accent: '#e4bd73', font: 'humanist', corners: 'soft', width: 'wide', sidebar: 'dark', sectionOrder: ['announcements', 'services', 'officials', 'disclosures', 'gallery_items', 'pages', 'forms', 'directory_entries'] },
+  'national-authority': { name: 'National Authority', description: 'Formal masthead. Notices first. Clear public accountability.', primary: '#153957', accent: '#d6ad56', font: 'classic', corners: 'square', width: 'wide', sidebar: 'dark', footerStyle: 'banded', sectionOrder: ['announcements', 'services', 'disclosures', 'officials', 'pages', 'forms', 'directory_entries', 'gallery_items'] },
+  'executive-civic': { name: 'Executive Civic', description: 'A focused announcement, quick links, and a compact civic overview.', primary: '#243e68', accent: '#e1bb76', font: 'humanist', corners: 'soft', width: 'wide', sidebar: 'light', heroAlign: 'center', footerStyle: 'light', sectionOrder: ['services', 'officials', 'announcements', 'pages', 'disclosures', 'forms', 'gallery_items', 'directory_entries'] },
+  'public-service': { name: 'Public Service', description: 'Service search up front. Forms and requirements within reach.', primary: '#075c70', accent: '#eac35b', font: 'humanist', corners: 'soft', width: 'wide', sidebar: 'dark', footerStyle: 'civic', sectionOrder: ['services', 'forms', 'announcements', 'directory_entries', 'pages', 'disclosures', 'officials', 'gallery_items'] },
+  institutional: { name: 'Institutional', description: 'A traditional information desk with a two-column editorial layout.', primary: '#642a36', accent: '#d6b777', font: 'classic', corners: 'square', width: 'boxed', sidebar: 'light', footerStyle: 'light', sectionOrder: ['announcements', 'pages', 'officials', 'services', 'disclosures', 'forms', 'directory_entries', 'gallery_items'] },
+  'community-showcase': { name: 'Community Showcase', description: 'Visual community stories, gallery highlights, and welcoming public information.', primary: '#3d5d44', accent: '#d6a84b', font: 'friendly', corners: 'round', width: 'full', sidebar: 'dark', heroAlign: 'center', footerStyle: 'civic', sectionOrder: ['gallery_items', 'announcements', 'officials', 'services', 'pages', 'forms', 'directory_entries', 'disclosures'] },
+  'transparency-first': { name: 'Transparency First', description: 'Disclosures and advisories lead a structured accountability-focused page.', primary: '#193c64', accent: '#cda548', font: 'classic', corners: 'square', width: 'wide', sidebar: 'dark', footerStyle: 'banded', sectionOrder: ['disclosures', 'announcements', 'services', 'officials', 'directory_entries', 'forms', 'pages', 'gallery_items'] },
+  'civic-minimal': { name: 'Civic Minimal', description: 'Quiet typography, restrained panels, and a compact information-first rhythm.', primary: '#263936', accent: '#d59a63', font: 'contemporary', corners: 'soft', width: 'boxed', sidebar: 'light', footerStyle: 'minimal', sectionOrder: ['pages', 'services', 'announcements', 'forms', 'officials', 'disclosures', 'gallery_items', 'directory_entries'] },
+  'modern-lgu': { name: 'Modern LGU', description: 'A confident split hero with resident actions and community stories.', primary: '#164b3f', accent: '#e4bd73', font: 'humanist', corners: 'soft', width: 'wide', sidebar: 'dark', footerStyle: 'civic', sectionOrder: ['announcements', 'services', 'officials', 'disclosures', 'gallery_items', 'pages', 'forms', 'directory_entries'] },
 });
 export const DEFAULT_PRESET = 'modern-lgu';
 export const FONTS = Object.freeze({
@@ -31,6 +31,7 @@ export const DESIGN_OPTIONS = Object.freeze({
   cardStyle: Object.freeze(['outlined', 'soft', 'elevated']),
   spacing: Object.freeze(['compact', 'comfortable', 'spacious']),
   navStyle: Object.freeze(['underline', 'pills', 'boxed']),
+  footerStyle: Object.freeze(['civic', 'light', 'banded', 'minimal']),
   heroOverlay: Object.freeze(['soft', 'balanced', 'strong']),
   heroOverlayStyle: Object.freeze(['solid', 'gradient', 'vignette']),
   heroTone: Object.freeze(['primary', 'secondary', 'neutral']),
@@ -52,7 +53,7 @@ export function presetDesign(preset = DEFAULT_PRESET) {
     font: def.font, bodyFont: 'humanist',
     corners: def.corners, width: def.width, sidebar: def.sidebar,
     headerDensity: 'comfortable', surface: 'clean', cardStyle: 'outlined',
-    spacing: 'comfortable', navStyle: 'underline',
+    spacing: 'comfortable', navStyle: 'underline', footerStyle: def.footerStyle || 'civic',
     heroOverlay: 'strong', heroOverlayStyle: 'gradient', heroTone: 'primary',
     heroImage: 'muted', heroFocus: 'center', heroHeight: 'standard',
     heroAlign: def.heroAlign || 'left',
@@ -80,6 +81,7 @@ export function normalizeDesign(input) {
     cardStyle: choose(source.cardStyle, DESIGN_OPTIONS.cardStyle, base.cardStyle),
     spacing: choose(source.spacing, DESIGN_OPTIONS.spacing, base.spacing),
     navStyle: choose(source.navStyle, DESIGN_OPTIONS.navStyle, base.navStyle),
+    footerStyle: choose(source.footerStyle, DESIGN_OPTIONS.footerStyle, base.footerStyle),
     heroOverlay: choose(source.heroOverlay, DESIGN_OPTIONS.heroOverlay, base.heroOverlay),
     heroOverlayStyle: choose(source.heroOverlayStyle, DESIGN_OPTIONS.heroOverlayStyle, base.heroOverlayStyle),
     heroTone: choose(source.heroTone, DESIGN_OPTIONS.heroTone, base.heroTone),

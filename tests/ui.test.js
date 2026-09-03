@@ -11,7 +11,7 @@ import { verificationResult } from '../assets/js/public/verify.js';
 import { mountStudio } from '../assets/js/design/studio.js';
 import { presetDesign } from '../assets/js/design/model.js';
 import { accessSurface } from '../assets/js/design/access-renderer.js';
-import { contentCard, publicHome } from '../assets/js/design/public-renderer.js';
+import { contentCard, publicHome, publicFooter } from '../assets/js/design/public-renderer.js';
 import { showRecords } from '../assets/js/core/dom.js';
 const { window } = parseHTML('<!doctype html><html><body></body></html>');
 globalThis.window = window; globalThis.document = window.document; globalThis.Node = window.Node;
@@ -91,8 +91,9 @@ test('expanded controls publish only validated choices and preview the existing 
   try {
     const overlay = fixture.root.querySelector('#design-heroOverlay');
     const tone = fixture.root.querySelector('#design-heroTone');
-    assert.ok(overlay); assert.ok(tone);
-    assert.ok(fixture.root.querySelectorAll('.control-grid select').length >= 17);
+    const footer = fixture.root.querySelector('#design-footerStyle');
+    assert.ok(overlay); assert.ok(tone); assert.ok(footer);
+    assert.ok(fixture.root.querySelectorAll('.control-grid select').length >= 18);
     overlay.value = 'balanced'; overlay.dispatchEvent(new window.Event('change'));
     tone.value = 'secondary'; tone.dispatchEvent(new window.Event('change'));
     const message = fixture.messages.at(-1).message;
@@ -142,4 +143,15 @@ test('homepage keeps the existing plain hero fallback when no cover is saved', (
   const hero = home.querySelector('.hero');
   assert.equal(hero.classList.contains('has-cover'), false);
   assert.equal(home.querySelector('.cover-slideshow'), null);
+});
+
+
+test('public footer has structured navigation and preserves configured barangay identity', () => {
+  const fragment = publicFooter({ barangay_name: 'Sibulan', municipality_city: 'Sta. Cruz', province: 'Davao del Sur' }, { preview: true });
+  const footer = fragment.querySelector('.public-footer');
+  assert.ok(footer.querySelector('.footer-identity'));
+  assert.equal(footer.querySelectorAll('.footer-column').length, 3);
+  assert.match(footer.textContent, /Barangay Sibulan/);
+  assert.match(footer.textContent, /Transparency & reports/);
+  assert.ok(fragment.querySelector('.map-section'));
 });

@@ -40,13 +40,14 @@ test('validated Design Studio choices provide more than one hundred thousand non
   assert.equal(presetDesign().heroTone, 'primary');
 });
 test('advanced appearance values normalize safely and unknown values fall back to preset defaults', () => {
-  const custom = normalizeDesign({ bodyFont: 'geometric', width: 'full', corners: 'extra-round', heroOverlay: 'soft', heroOverlayStyle: 'vignette', heroTone: 'secondary', heroImage: 'monochrome', heroFocus: 'top', heroHeight: 'tall', heroAlign: 'center', cardStyle: 'elevated', surface: 'tinted', spacing: 'spacious', navStyle: 'pills', headerDensity: 'compact' });
-  assert.equal(custom.bodyFont, 'geometric'); assert.equal(custom.width, 'full'); assert.equal(custom.heroTone, 'secondary');
-  const rejected = normalizeDesign({ heroOverlay: 'url(bad)', heroTone: '#ffffff', cardStyle: '<script>', bodyFont: 'remote' });
+  const custom = normalizeDesign({ bodyFont: 'geometric', width: 'full', corners: 'extra-round', heroOverlay: 'soft', heroOverlayStyle: 'vignette', heroTone: 'secondary', heroImage: 'monochrome', heroFocus: 'top', heroHeight: 'tall', heroAlign: 'center', cardStyle: 'elevated', surface: 'tinted', spacing: 'spacious', navStyle: 'pills', footerStyle: 'banded', headerDensity: 'compact' });
+  assert.equal(custom.bodyFont, 'geometric'); assert.equal(custom.width, 'full'); assert.equal(custom.heroTone, 'secondary'); assert.equal(custom.footerStyle, 'banded');
+  const rejected = normalizeDesign({ heroOverlay: 'url(bad)', heroTone: '#ffffff', cardStyle: '<script>', bodyFont: 'remote', footerStyle: 'floating' });
   assert.equal(rejected.heroOverlay, presetDesign().heroOverlay);
   assert.equal(rejected.heroTone, presetDesign().heroTone);
   assert.equal(rejected.cardStyle, presetDesign().cardStyle);
   assert.equal(rejected.bodyFont, presetDesign().bodyFont);
+  assert.equal(rejected.footerStyle, presetDesign().footerStyle);
 });
 test('normalization refuses CSS injections, arbitrary properties, and unknown fonts', () => {
   const clean = normalizeDesign({ preset: 'public-service', primary: '#123456', accent: 'url(javascript:bad)', css: 'body{}', font: 'url(remote)', extra: '<script>' });
@@ -92,6 +93,7 @@ test('shared runtime applies independent main, secondary, and accent contrast pa
   assert.equal(properties.get('--hero-color'), '#123456');
   assert.equal(root.dataset.heroOverlay, presetDesign().heroOverlay);
   assert.equal(root.dataset.cardStyle, presetDesign().cardStyle);
+  assert.equal(root.dataset.footerStyle, presetDesign().footerStyle);
   applyDesign({ secondary: '#000000', heroTone: 'secondary', heroOverlay: 'soft' }, root);
   assert.equal(properties.get('--on-secondary'), '#ffffff');
   assert.equal(properties.get('--hero-color'), '#000000');
