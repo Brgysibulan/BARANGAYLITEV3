@@ -7,7 +7,7 @@ import { element as el } from '../core/dom.js';
 import { PRESETS, presetDesign, normalizeDesign, sameDesign } from './model.js';
 
 /** One editor powers the safe public demo and the admin-only publishing workspace. */
-export function mountStudio(root, { snapshot = { config: presetDesign() }, service = null, previewUrl = 'preview.html', onPublished = () => {} } = {}) {
+export function mountStudio(root, { snapshot = { config: presetDesign() }, service = null, previewUrl = 'preview.html', previewCovers = [], onPublished = () => {} } = {}) {
   let baseline = snapshot;
   let draft = normalizeDesign(snapshot.config);
   let busy = false;
@@ -16,7 +16,7 @@ export function mountStudio(root, { snapshot = { config: presetDesign() }, servi
   const channel = crypto.randomUUID();
   const heading = el('div', '', { class: 'studio-heading' });
   const headingCopy = el('div');
-  headingCopy.append(el('p', 'WORKSPACE / APPEARANCE', { class: 'eyebrow muted' }), el('h1', 'Design Studio'), el('p', 'One identity. Every screen. Choose a layout, make it yours, and preview before publishing.', { class: 'muted' }));
+  headingCopy.append(el('p', 'WORKSPACE / APPEARANCE', { class: 'eyebrow muted' }), el('h1', 'Design Studio'), el('p', 'One identity. Every screen. Combine layouts, colors, typography, surfaces, cards, navigation, and hero treatments before publishing.', { class: 'muted' }));
   const actions = el('div', '', { class: 'studio-actions' });
   const revert = el('button', 'Discard changes', { type: 'button' });
   const reload = el('button', 'Reload published', { type: 'button' });
@@ -35,7 +35,7 @@ export function mountStudio(root, { snapshot = { config: presetDesign() }, servi
   const layout = el('div', '', { class: 'studio-layout' });
   const controls = el('div', '', { class: 'studio-controls' });
   const themes = el('section', '', { class: 'control-panel' });
-  themes.append(el('h2', '01 / Choose your layout'), el('p', 'Five structures. Not just five colors.', { class: 'muted' }));
+  themes.append(el('h2', '01 / Choose your layout'), el('p', 'Eight structures, each with independently adjustable visual systems.', { class: 'muted' }));
   const themeList = el('div', '', { class: 'theme-list' });
   const themeButtons = [];
   for (const [key, def] of Object.entries(PRESETS)) {
@@ -73,22 +73,50 @@ export function mountStudio(root, { snapshot = { config: presetDesign() }, servi
       tokens.append(el('p', 'Quick-links panel, footer, colored staff sidebar, and login side panel.', { id: 'secondary-color-help', class: 'color-help muted' }));
     }
   }
-  const grid = el('div', '', { class: 'control-grid' });
-  for (const [key, label, options] of [
-    ['font', 'Heading font', [['humanist', 'Humanist'], ['classic', 'Classic serif'], ['contemporary', 'Contemporary']]],
-    ['corners', 'Corners', [['square', 'Square'], ['soft', 'Soft'], ['round', 'Rounded']]],
-    ['sidebar', 'Staff navigation', [['dark', 'Secondary color'], ['light', 'Light']]],
-    ['width', 'Page width', [['wide', 'Wide'], ['boxed', 'Boxed']]],
-  ]) {
+  const addSelect = (parent, key, label, options) => {
     const field = el('div'); const input = el('select', '', { id: `design-${key}` });
     options.forEach(([value, title]) => input.append(el('option', title, { value })));
-    input.addEventListener('change', () => { draft[key] = input.value; update(); }); inputs[key] = { input };
-    field.append(el('label', label, { for: `design-${key}` }), input); grid.append(field);
-  }
+    input.addEventListener('change', () => { draft[key] = input.value; update(); });
+    inputs[key] = { input }; field.append(el('label', label, { for: `design-${key}` }), input); parent.append(field);
+  };
+  const grid = el('div', '', { class: 'control-grid' });
+  [
+    ['font', 'Heading font', [['humanist', 'Humanist'], ['classic', 'Classic serif'], ['contemporary', 'Contemporary'], ['geometric', 'Geometric'], ['friendly', 'Friendly']]],
+    ['bodyFont', 'Body font', [['humanist', 'Humanist'], ['classic', 'Classic serif'], ['contemporary', 'Contemporary'], ['geometric', 'Geometric'], ['friendly', 'Friendly']]],
+    ['corners', 'Corners', [['square', 'Square'], ['soft', 'Soft'], ['round', 'Rounded'], ['extra-round', 'Extra rounded']]],
+    ['sidebar', 'Staff navigation', [['dark', 'Secondary color'], ['light', 'Light']]],
+    ['width', 'Page width', [['boxed', 'Boxed'], ['wide', 'Wide'], ['full', 'Full']]],
+    ['headerDensity', 'Header spacing', [['compact', 'Compact'], ['comfortable', 'Comfortable'], ['spacious', 'Spacious']]],
+  ].forEach(option => addSelect(grid, ...option));
   tokens.append(grid, el('p', 'Button and colored-panel text contrast is adjusted automatically. All CSS stays in one shared design system.', { class: 'muted' }));
+
+  const heroControls = el('section', '', { class: 'control-panel' });
+  heroControls.append(el('h2', '03 / Hero photo & layer'), el('p', 'The saved Dashboard cover remains the source. These options change only how it is presented.', { class: 'muted' }));
+  const heroGrid = el('div', '', { class: 'control-grid' });
+  [
+    ['heroOverlay', 'Photo visibility', [['soft', 'More visible'], ['balanced', 'Balanced'], ['strong', 'Subtle photo']]],
+    ['heroOverlayStyle', 'Layer style', [['solid', 'Solid wash'], ['gradient', 'Directional gradient'], ['vignette', 'Soft vignette']]],
+    ['heroTone', 'Layer color', [['primary', 'Main color'], ['secondary', 'Secondary color'], ['neutral', 'Neutral dark']]],
+    ['heroImage', 'Photo treatment', [['natural', 'Natural'], ['muted', 'Muted'], ['monochrome', 'Monochrome']]],
+    ['heroFocus', 'Photo position', [['top', 'Top'], ['center', 'Center'], ['bottom', 'Bottom']]],
+    ['heroHeight', 'Hero height', [['compact', 'Compact'], ['standard', 'Balanced'], ['tall', 'Tall']]],
+    ['heroAlign', 'Hero text', [['left', 'Left aligned'], ['center', 'Centered']]],
+  ].forEach(option => addSelect(heroGrid, ...option));
+  heroControls.append(heroGrid);
+
+  const components = el('section', '', { class: 'control-panel' });
+  components.append(el('h2', '04 / Surfaces & components'));
+  const componentGrid = el('div', '', { class: 'control-grid' });
+  [
+    ['surface', 'Page background', [['clean', 'Clean white'], ['tinted', 'Theme tint'], ['contrast', 'High contrast']]],
+    ['cardStyle', 'Card style', [['outlined', 'Outlined'], ['soft', 'Soft color'], ['elevated', 'Elevated']]],
+    ['spacing', 'Section spacing', [['compact', 'Compact'], ['comfortable', 'Comfortable'], ['spacious', 'Spacious']]],
+    ['navStyle', 'Navigation links', [['underline', 'Underline'], ['pills', 'Pills'], ['boxed', 'Boxed']]],
+  ].forEach(option => addSelect(componentGrid, ...option));
+  components.append(componentGrid);
   const reset = el('button', 'Reset to Modern LGU default', { type: 'button' });
   reset.addEventListener('click', () => { draft = presetDesign(); update(); message.textContent = 'Default restored in preview only. Publish to make it live.'; });
-  tokens.append(reset); controls.append(themes, tokens);
+  tokens.append(reset); controls.append(themes, tokens, heroControls, components);
   const preview = el('section', '', { class: 'preview-area', 'aria-label': 'Design preview' });
   const toolbar = el('div', '', { class: 'preview-toolbar' });
   const surfaceSelect = el('select', '', { 'aria-label': 'Preview screen' });
@@ -108,7 +136,7 @@ export function mountStudio(root, { snapshot = { config: presetDesign() }, servi
   root.replaceChildren(heading, editingNote, confirmation, layout, message);
 
   /** postMessage is scoped by origin, window identity, and an unpredictable frame channel. */
-  function send() { if (!disposed) frame.contentWindow?.postMessage({ type: 'brgy-design-preview', channel, config: draft, surface }, location.origin); }
+  function send() { if (!disposed) frame.contentWindow?.postMessage({ type: 'brgy-design-preview', channel, config: draft, surface, covers: previewCovers }, location.origin); }
   function update() {
     draft = normalizeDesign(draft); confirmation.hidden = true;
     themeButtons.forEach(([key, button]) => { button.setAttribute('aria-pressed', key === draft.preset); button.disabled = busy; });
