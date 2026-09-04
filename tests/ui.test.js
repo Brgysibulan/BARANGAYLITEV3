@@ -8,7 +8,8 @@ import assert from 'node:assert/strict';
 import { parseHTML } from 'linkedom';
 import { editorDialog, fieldsForm, recordTable, labelFor, confirmationDialog, detailsDialog } from '../assets/js/staff/ui.js';
 import { verificationResult } from '../assets/js/public/verify.js';
-import { editFields, contentScreen, mountContent } from '../assets/js/staff/content-screen.js';
+import { editFields } from '../assets/js/staff/content-screen.js';
+import { directoryScreen, mountDirectory, officialOrder } from '../assets/js/staff/directory-screen.js';
 import { STAFF_CONTENT_ROUTES } from '../assets/js/staff/workspace.js';
 import { mountStudio } from '../assets/js/design/studio.js';
 import { presetDesign } from '../assets/js/design/model.js';
@@ -79,39 +80,44 @@ test('admin Directory has focused Officials, Staff, and Functionaries managers',
   const directory = STAFF_CONTENT_ROUTES.filter(route => route.parent === 'directory');
   assert.deepEqual(directory.map(route => route.label), ['Barangay Officials', 'Barangay Staff', 'Barangay Functionaries']);
   assert.equal(STAFF_CONTENT_ROUTES.some(route => route.key === 'directory_entries'), false);
-  const staff = contentScreen('directory-staff');
-  const functionaries = contentScreen('directory-functionaries');
-  assert.equal(staff.table, 'directory_entries');
-  assert.deepEqual(staff.listOptions.categories, ['Barangay Staff']);
-  assert.equal(staff.fixedCategory, 'Barangay Staff');
-  assert.equal(editFields('directory-staff').some(field => field.key === 'category'), false);
-  assert.equal(functionaries.table, 'directory_entries');
-  assert.deepEqual(functionaries.listOptions.excludeCategories, ['Contact', 'Barangay Staff']);
-  const functionaryCategory = editFields('directory-functionaries').find(field => field.key === 'category');
-  assert.ok(functionaryCategory.suggestions.includes('BHW'));
-  assert.equal(functionaryCategory.suggestions.includes('Barangay Staff'), false);
+  assert.equal(directoryScreen('officials').section, 'officials');
+  assert.equal(directoryScreen('directory-staff').section, 'staff');
+  assert.equal(directoryScreen('directory-functionaries').section, 'functionaries');
+  assert.equal(officialOrder('Punong Barangay'), 10);
+  assert.equal(officialOrder('SK Treasurer'), 90);
 });
-test('Barangay Staff manager automatically reads and saves the Staff database category', async () => {
+test('Barangay Staff manager categorizes an existing database person without creating a duplicate', async () => {
   const root = document.createElement('main'); document.body.append(root);
-  let firstList, saved;
-  const services = { content: {
-    list: async (table, options) => { firstList ||= { table, options }; return { rows: [], count: 0 }; },
-    save: async (table, values, id) => { saved = { table, values, id }; return { id: 1, ...values }; },
-    remove: async () => ({}),
-  }, storage: { saveWithUpload: async () => ({}) } };
-  const cleanup = mountContent(root, 'directory-staff', services, () => true);
+  let firstList, saved, calls = 0;
+  const person = { id: 17, name: 'Existing Staff', designation: 'Barangay Clerk', directory_section: null, directory_subcategory: null, directory_sort_order: 0, directory_is_published: false, directory_is_eligible: true };
+  const services = {
+    directory: {
+      listStaff: async options => { calls++; firstList ||= options; return options.view === 'unassigned' ? { rows: [person], count: 1 } : { rows: [], count: 0 }; },
+      save: async values => { saved = values; return { ...person, directory_section: values.section, directory_subcategory: values.subcategory, directory_sort_order: values.sortOrder, directory_is_published: values.isPublished }; },
+    },
+    storage: { upload: async () => { throw new Error('No upload expected'); } },
+  };
+  const cleanup = mountDirectory(root, 'directory-staff', services, () => true);
   try {
     await new Promise(resolve => setImmediate(resolve));
-    assert.equal(firstList.table, 'directory_entries');
-    assert.deepEqual(firstList.options.categories, ['Barangay Staff']);
-    assert.match(root.textContent, /Barangay Staff/);
-    [...root.querySelectorAll('button')].find(node => node.textContent === '+ Add staff member').click();
-    assert.equal(document.querySelector('dialog [name=category]'), null);
-    document.querySelector('dialog [name=name]').value = 'Sample Staff';
+    assert.equal(firstList.section, 'staff');
+    assert.equal(firstList.view, 'section');
+    [...root.querySelectorAll('button')].find(node => node.textContent === 'Categorize existing person').click();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.ok(calls >= 2);
+    [...root.querySelectorAll('button')].find(node => node.textContent === 'Categorize').click();
+    assert.equal(document.querySelector('dialog [name=directory_section]').value, 'staff');
+    assert.equal(document.querySelector('dialog [name=directory_subcategory]').closest('.field').hidden, false);
+    document.querySelector('dialog [name=directory_subcategory]').value = 'Barangay Clerk';
+    document.querySelector('dialog [name=directory_is_published]').checked = true;
     document.querySelector('dialog form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
     await new Promise(resolve => setImmediate(resolve));
-    assert.equal(saved.table, 'directory_entries');
-    assert.equal(saved.values.category, 'Barangay Staff');
+    assert.equal(saved.id, 17);
+    assert.equal(saved.section, 'staff');
+    assert.equal(saved.subcategory, 'Barangay Clerk');
+    assert.equal(saved.isPublished, true);
+    assert.equal(Object.hasOwn(saved, 'name'), false);
+    assert.equal(Object.hasOwn(saved, 'designation'), false);
   } finally { cleanup(); root.remove(); document.querySelector('dialog')?.remove(); }
 });
 test('directory cards use a neutral icon when no uploaded photo is available', () => {

@@ -14,7 +14,7 @@ The Admin Portal login says **Welcome** and uses the first saved homepage cover 
 
 Public service pages are informational and do not collect online payments; any required transaction is completed directly at the Barangay Hall with an official receipt.
 
-The public navigation is organized as Home, News & Updates, Services, About, Directory, and Admin Portal. In both staff workspaces, **Directory** is organized into separate **Barangay Officials**, **Barangay Staff**, and **Barangay Functionaries** managers. Officials reuse `officials`; Staff and Functionaries reuse filtered `directory_entries`, so an active database change automatically appears in the matching public directory. Staff records receive their fixed category automatically, while Functionaries keep the exact barangay group heading. Both accept a photo or image icon, and records without one receive a neutral public profile icon. No directory table, bucket, or account flow is duplicated.
+The public navigation is organized as Home, News & Updates, Services, About, Directory, and Admin Portal. In both staff workspaces, **Directory** is organized into separate **Barangay Officials**, **Barangay Staff**, and **Barangay Functionaries** managers. All three managers list the existing people from `verification_records`; the operator assigns only the Directory category, Staff/Functionary subcategory, photo/icon, display order, and Publish switch. Names and designations are never retyped or copied into another personnel table. The public site calls a privacy-limited RPC that returns only explicitly published display fields from ACTIVE records—never ID numbers, QR tokens, or dates. Officials need no subcategory because their existing designation drives the Barangay Council/SK hierarchy. Records without a photo receive a neutral public profile icon.
 
 Public verification is at `verify.html`. Manual lookup requires ID number plus last name, as in the original website. QR codes use the existing record token and the permanent GitHub Pages address. Public analytics stores only approved aggregate counters, never visitor identity, search text, ID numbers, last names, or QR tokens. Billing, quota, bandwidth and database disk size are explicitly unavailable until a separately authorized provider integration exists.
 
@@ -24,7 +24,7 @@ Writes run only after an explicit staff action. The application/activation scree
 
 - Supabase: `pkvorwvkqjnbgktkgjhr` (`BRGYWEB-LITE`), **not WebSaaS**.
 - Auth: existing `auth.users` and active roles in `public.profiles`.
-- Existing public-content tables retain their schema, data, IDs, and RLS. The frontend also uses the already-deployed delegated-permission and activity tables/functions.
+- Existing public-content tables retain their data, IDs, and RLS. Five Directory-only metadata fields and narrowly scoped staff/public RPCs were added to `verification_records`; existing identity, ID, status, date, and QR fields were not changed.
 - Existing QR tokens, file URLs, and 4 Storage buckets are unchanged.
 - The deployed `manage-editors` Edge Function and protected RPCs are reused; browser code never receives a service-role key.
 - The V3 design is saved only under `site_settings.design_theme.brgyweblitev3`; legacy JSON keys and color columns are preserved. No legacy CSS is executed.
@@ -49,6 +49,7 @@ signup.html / activate.html   Existing Content Admin application/activation flow
 assets/js/public/             Published public data view
 tests/                        Mocked safety and contract tests
 scripts/                      Local checks and read-only live verification
+supabase/migrations/          Applied, reviewable Directory schema/RPC migrations
 docs/REWIRE-AUDIT.md           Exact migration boundaries and remaining work
 docs/DEBUGGING.md              Where to look when a feature fails
 ```
@@ -75,7 +76,7 @@ Never put a Supabase secret/service-role key in this frontend. The configured pu
 
 ## Deployment boundary
 
-The static source can be served by the existing GitHub Pages workflow or ordinary static hosting. No new hosting provider, Supabase project, schema migration, or Auth redirect allowlist was created. Application/activation screens reuse the existing services; invitation email redirects still need the owner to validate their production URL against the existing Auth configuration. No invitation, signup, password update, or live theme publication is performed by the automated tests.
+The static source can be served by the existing GitHub Pages workflow or ordinary static hosting. No new hosting provider, Supabase project, account, or Auth redirect allowlist was created. The three committed Directory migrations match the migrations already applied to the existing project. Application/activation screens reuse the existing services; invitation email redirects still need the owner to validate their production URL against the existing Auth configuration. No invitation, signup, password update, Directory assignment, or live theme publication is performed by the automated tests.
 
 
 ## Footer design options

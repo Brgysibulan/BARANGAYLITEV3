@@ -25,15 +25,16 @@ const base = () => ({ id: 1, barangay_name: 'Test barangay', hero_title: 'Public
 
 /** Each fixture owns fake state; test writes never leave the process. */
 function fixture() {
-  let settings = base(), covers = [], failure = false; const writes = []; let reads = 0, contentReads = 0, qrReads = 0;
+  let settings = base(), covers = [], failure = false; const writes = []; let reads = 0, contentReads = 0, directoryReads = 0, qrReads = 0;
   const services = {
     settings: { read: async () => { reads++; if (failure) throw new Error('Offline'); return { ...settings }; }, update: async values => { writes.push(values); settings = { ...settings, ...values }; return { ...settings }; } },
     design: { read: async () => ({ config: presetDesign() }) },
     covers: { read: async () => ({ slides: covers.map(slide => ({ ...slide })) }) },
     content: { list: async () => { contentReads++; return { rows: [], count: 0 }; } },
+    directory: { listPublic: async () => { directoryReads++; return { rows: [], count: 0 }; } },
     verification: { verifyQr: async () => { qrReads++; return null; }, verifyManual: async () => { qrReads++; return null; } },
   };
-  return { services, writes, settings: values => { settings = { ...settings, ...values }; }, covers: values => { covers = values.map(slide => ({ ...slide })); }, fail: value => { failure = value; }, counts: () => ({ reads, contentReads, qrReads }) };
+  return { services, writes, settings: values => { settings = { ...settings, ...values }; }, covers: values => { covers = values.map(slide => ({ ...slide })); }, fail: value => { failure = value; }, counts: () => ({ reads, contentReads, directoryReads, qrReads }) };
 }
 function shell(id) {
   document.body.innerHTML = '<p id="status"></p><div id="' + id + '"></div>';
@@ -126,6 +127,22 @@ test('open public page switches to maintenance and resumes its route when mainte
     const count = f.counts().contentReads; location.hash = '#services'; window.dispatchEvent(new window.Event('hashchange')); await flush(); assert.equal(f.counts().contentReads, count);
     f.settings({ maintenance_mode: false }); window.dispatchEvent(new window.Event('focus')); await flush(); assert.ok(root.querySelector('.public-nav')); assert.match(root.textContent, /Barangay Services/);
     f.fail(true); window.dispatchEvent(new window.Event('focus')); await flush(); assert.match(root.textContent, /Website temporarily unavailable/); assert.equal(root.querySelector('.public-nav'), null);
+  } finally { cleanup(); }
+});
+test('public personnel pages read the existing-person Directory RPC, not duplicate content rows', async () => {
+  const root = shell('public-root'), f = fixture();
+  const calls = [];
+  f.services.directory.listPublic = async options => {
+    calls.push(options);
+    return { rows: [{ id: 17, name: 'Existing Database Person', designation: 'Barangay Clerk', role_title: 'Barangay Clerk', category: 'Administrative Staff', photo_url: null }], count: 1 };
+  };
+  location.hash = '#staff';
+  const cleanup = await startPublicPage({ services: f.services });
+  try {
+    await flush();
+    assert.equal(calls[0].section, 'staff');
+    assert.match(root.textContent, /Existing Database Person/);
+    assert.match(root.textContent, /Administrative Staff/);
   } finally { cleanup(); }
 });
 test('public hero reuses and refreshes the existing dashboard cover record', async () => {

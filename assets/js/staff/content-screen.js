@@ -3,34 +3,17 @@
  * Depends on: existing data/storage services, shared form components, and lazy QR/image tools.
  * Debug: errors stay beside the operation; page generations prevent stale request repainting.
  */
-import { CONTENT, VERIFICATION_FIELDS, DIRECTORY_CATEGORY_OPTIONS, DIRECTORY_GROUPS } from '../data/contracts.js';
+import { CONTENT, VERIFICATION_FIELDS, DIRECTORY_CATEGORY_OPTIONS } from '../data/contracts.js';
 import { element as el } from '../core/dom.js';
 import { button, heading, badge, recordTable, editorDialog, confirmationDialog, detailsDialog, dateText } from './ui.js';
 import { fullName, idStatus } from '../data/id-model.js';
 
-/** Staff routes can present focused Directory managers without duplicating the live table. */
-const DIRECTORY_SCREENS = Object.freeze({
-  'directory-staff': Object.freeze({
-    table: 'directory_entries', label: 'Barangay Staff', itemLabel: 'staff member', fixedCategory: 'Barangay Staff',
-    listOptions: Object.freeze({ categories: DIRECTORY_GROUPS.staff, alphabetical: true }),
-    description: 'Manage Barangay Staff records. Saved changes automatically appear on the public Staff directory when marked active.',
-  }),
-  'directory-functionaries': Object.freeze({
-    table: 'directory_entries', label: 'Barangay Functionaries', itemLabel: 'functionary',
-    listOptions: Object.freeze({ excludeCategories: Object.freeze([...DIRECTORY_GROUPS.contacts, ...DIRECTORY_GROUPS.staff]), alphabetical: true }),
-    categorySuggestions: DIRECTORY_GROUPS.functionaries,
-    forbiddenCategories: Object.freeze([...DIRECTORY_GROUPS.contacts, ...DIRECTORY_GROUPS.staff]),
-    description: 'Manage functionaries by their exact group heading. Active records automatically appear in the matching public Functionaries group.',
-  }),
-});
-
-/** Resolve a staff-facing route to its one existing database table and fixed filters. */
+/** Resolve ordinary content routes; personnel Directory routes use directory-screen.js. */
 export function contentScreen(route) {
-  const variant = DIRECTORY_SCREENS[route];
-  const table = variant?.table || route;
+  const table = route;
   const def = CONTENT[table];
   if (!def) throw new Error('Unsupported content screen.');
-  return Object.freeze({ route, table, def, label: variant?.label || def.label, itemLabel: variant?.itemLabel, fixedCategory: variant?.fixedCategory, categorySuggestions: variant?.categorySuggestions, forbiddenCategories: variant?.forbiddenCategories || Object.freeze([]), listOptions: variant?.listOptions || Object.freeze({}), description: variant?.description });
+  return Object.freeze({ route, table, def, label: def.label, forbiddenCategories: Object.freeze([]), listOptions: Object.freeze({}) });
 }
 
 /** Defaults publish nothing accidentally; edits send only fields the operator changed. */
@@ -39,13 +22,13 @@ export function editFields(route, original = {}) {
   const screen = verification ? null : contentScreen(route);
   const table = screen?.table || route; const def = verification ? null : screen.def;
   const keys = verification ? VERIFICATION_FIELDS : def.fields;
-  return keys.filter(key => !['file_name', 'file_type', 'file_size'].includes(key) && !(screen?.fixedCategory && key === 'category')).map(key => {
+  return keys.filter(key => !['file_name', 'file_type', 'file_size'].includes(key)).map(key => {
     const field = { key, required: key === (def?.title || 'control_number') || (['pages', 'announcements'].includes(table) && key === 'slug') || (table === 'officials' && key === 'position') || (table === 'directory_entries' && key === 'category') };
     if (/^is_/.test(key)) Object.assign(field, { type: 'checkbox', default: false });
     else if (table === 'directory_entries' && key === 'category') {
       // A datalist suggests known values without forcing another barangay's designations.
       // The exact saved text becomes the public heading for a functionary group.
-      Object.assign(field, { suggestions: screen?.categorySuggestions || DIRECTORY_CATEGORY_OPTIONS, help: route === 'directory-functionaries' ? 'Choose a common functionary group or type the exact local group heading used by your barangay.' : 'Use Contact, Barangay Staff, or type the exact functionary group heading used by your barangay.' });
+      Object.assign(field, { suggestions: DIRECTORY_CATEGORY_OPTIONS, help: 'This legacy content table is retained for Barangay Hall contact entries. Personnel categories are managed from Directory.' });
     }
     else if (key === 'status') Object.assign(field, { options: ['ACTIVE', 'INACTIVE', 'EXPIRED'], default: 'ACTIVE' });
     else if (key === 'sort_order') Object.assign(field, { type: 'number', default: 0 });
@@ -84,9 +67,6 @@ export function mountContent(root, route, services, isCurrent) {
       saveLabel: row.id ? 'Update record' : 'Create record',
       async onSave(values, file) {
         if (values.published_at) values.published_at = new Date(values.published_at).toISOString();
-        // The focused Staff manager owns this fixed category; operators never need
-        // to retype it and cannot accidentally move a record into Functionaries.
-        if (screen?.fixedCategory) values.category = screen.fixedCategory;
         if (screen?.forbiddenCategories.includes(values.category)) throw new Error('Choose a Barangay Functionaries group, not Contact or Barangay Staff.');
         // Only changed values are patched; an unrelated update in another tab is not blanked.
         const payload = row.id ? Object.fromEntries(Object.entries(values).filter(([key, value]) => key === 'published_at' ? localDateTime(value) !== localDateTime(row[key]) : value !== (row[key] ?? null))) : values;
@@ -127,16 +107,19 @@ export function mountContent(root, route, services, isCurrent) {
   const previous = button('← Previous', () => load(page - 1)); const next = button('Next →', () => load(page + 1)); footer.append(summary, previous, next); root.append(toolbar, message, slot, footer);
   let appliedSearch = '', appliedFilter = 'all';
   toolbar.addEventListener('submit', event => { event.preventDefault(); appliedSearch = search.value.trim(); appliedFilter = filter.value; load(0); });
-  const directoryColumns = route === 'directory-staff'
-    ? [{ key: 'name' }, { key: 'role_title', label: 'Designation' }]
-    : route === 'directory-functionaries'
-      ? [{ key: 'name' }, { key: 'category', label: 'Functionary group' }, { key: 'role_title', label: 'Designation' }]
-      : null;
+  const ordinaryColumns = verification ? [] : [
+    { key: def.title },
+    ...(['officials', 'directory_entries', 'forms', 'disclosures', 'gallery_items'].includes(table)
+      ? [{ key: table === 'officials' ? 'position' : table === 'gallery_items' ? 'album' : 'category' }]
+      : []),
+    { key: def.flag, label: 'Visibility', render: row => badge(row[def.flag] ? 'Published' : 'Draft / hidden', row[def.flag] ? 'good' : '') },
+    { key: def.order, render: row => def.order.endsWith('_at') ? dateText(row[def.order]) : row[def.order] },
+  ];
   const columns = verification ? [
     { key: 'control_number' }, { key: 'full_name', label: 'Name', render: fullName },
     { key: 'date_acquired', render: row => dateText(row.date_acquired) }, { key: 'expiration_date', render: row => dateText(row.expiration_date) },
     { key: 'status', label: 'Current validity', render: row => { const status = idStatus(row); return badge(status, status === 'Valid' ? 'good' : 'warning'); } },
-  ] : [...(directoryColumns || [{ key: def.title }, ...(['officials', 'directory_entries', 'forms', 'disclosures', 'gallery_items'].includes(table) ? [{ key: table === 'officials' ? 'position' : table === 'gallery_items' ? 'album' : 'category' }] : [])]), { key: def.flag, label: 'Visibility', render: row => badge(row[def.flag] ? 'Published' : 'Draft / hidden', row[def.flag] ? 'good' : '') }, { key: def.order, render: row => def.order.endsWith('_at') ? dateText(row[def.order]) : row[def.order] }];
+  ] : ordinaryColumns;
   async function remove(row, trigger) {
     const name = verification ? row.control_number : row[def.title];
     const confirmed = await confirmationDialog({

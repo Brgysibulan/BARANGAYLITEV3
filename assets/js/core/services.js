@@ -17,15 +17,17 @@ import { createUsage } from '../data/usage.js';
 import { createVisibility } from '../data/visibility.js';
 import { createPermissions } from '../data/permissions.js';
 import { createActivity } from '../data/activity.js';
+import { createDirectory } from '../data/directory.js';
 
 /** Dependency injection keeps tests away from production accounts and records. */
 export function createServices(client) {
   const auth = createAuth(client);
   const content = createContent(client, auth);
+  const directory = createDirectory(client, auth);
   const permissions = createPermissions(client, auth);
   const activity = createActivity(client, auth);
   return Object.freeze({
-    auth, content,
+    auth, content, directory,
     settings: createSettings(client, auth),
     verification: createVerification(client, auth),
     storage: createStorage(client, auth, content),

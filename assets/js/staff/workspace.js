@@ -18,6 +18,7 @@ import { mountAccounts } from './accounts-screen.js';
 import { mountVisibility } from './visibility-screen.js';
 import { mountActivity } from './activity-screen.js';
 import { DELEGATED_MODULES } from '../data/permissions.js';
+import { DIRECTORY_ROUTE_KEYS, mountDirectory } from './directory-screen.js';
 
 /** Staff navigation groups one database-backed Directory into three focused managers. */
 export const STAFF_CONTENT_ROUTES = Object.freeze([
@@ -123,6 +124,7 @@ export async function startWorkspace(workspace) {
         else if (route === 'covers') currentCleanup = mountCovers(view, services, isCurrent);
         else if (route === 'editors') currentCleanup = mountAccounts(view, services, isCurrent);
         else if (route === 'activity') currentCleanup = mountActivity(view, services, isCurrent);
+        else if (DIRECTORY_ROUTE_KEYS.includes(route)) currentCleanup = mountDirectory(view, route, services, isCurrent);
         else currentCleanup = mountContent(view, route, services, isCurrent);
         return currentCleanup;
       } catch (error) {

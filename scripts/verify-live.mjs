@@ -14,6 +14,11 @@ async function get(route) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${route}`, { headers, signal: AbortSignal.timeout(20000) });
   return { ok: response.ok, status: response.status, data: await response.json() };
 }
+/** RPC reads use POST but call only stable/list functions; this verifier never calls a write RPC. */
+async function rpc(name, body) {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${name}`, { method: 'POST', headers, body: JSON.stringify(body), signal: AbortSignal.timeout(20000) });
+  return { ok: response.ok, status: response.status, data: await response.json() };
+}
 const settings = await get(`site_settings?select=${SETTINGS_SELECT}&id=eq.1`);
 assert.equal(settings.ok, true, `site_settings HTTP ${settings.status}`);
 assert.equal(settings.data.length, 1, 'Expected existing singleton settings row');
@@ -34,6 +39,18 @@ for (const [table, def] of Object.entries(CONTENT)) {
   assert.ok(Array.isArray(result.data));
   console.log(`PASS: ${table} existing column contract and public read access.`);
 }
+for (const section of ['officials', 'staff', 'functionaries']) {
+  const result = await rpc('list_public_directory_records', { p_section: section, p_offset: 0, p_limit: 1, p_excluded_subcategories: [] });
+  assert.equal(result.ok, true, `public Directory ${section} HTTP ${result.status}`);
+  assert.ok(Array.isArray(result.data));
+  for (const row of result.data) {
+    for (const privateField of ['control_number', 'qr_token', 'date_acquired', 'expiration_date', 'first_name', 'last_name']) assert.equal(Object.hasOwn(row, privateField), false, `Public Directory exposed ${privateField}`);
+  }
+}
+console.log('PASS: public Directory RPC returns only approved published display fields.');
+const deniedDirectory = await rpc('staff_list_directory_records', { p_section: 'staff', p_view: 'section', p_search: '', p_offset: 0, p_limit: 1 });
+assert.ok([401, 403].includes(deniedDirectory.status), `Anonymous staff Directory RPC must be denied, got HTTP ${deniedDirectory.status}`);
+console.log('PASS: anonymous caller cannot execute staff Directory listing.');
 // Both a denied request and an empty RLS-filtered response are safe for anonymous users.
 for (const table of ['profiles', 'verification_records', 'content_admin_applications']) {
   const result = await get(`${table}?select=*&limit=1`);

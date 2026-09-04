@@ -124,11 +124,11 @@ test('Public Visibility renders one Save per card and actual Directory headings'
       saveModule: async (key, enabled) => { saved.push({ key, enabled }); const next = structuredClone(config); next.modules[key] = enabled; return { config: next }; },
       saveGroup: async (key, enabled) => { saved.push({ group: key, enabled }); const next = structuredClone(config); next.groups[key] = enabled; return { config: next }; },
     },
-    content: { list: async () => ({ rows: [{ category: 'Lupon' }, { category: 'Barangay Staff' }], count: 2 }) },
+    directory: { headings: async () => [{ section: 'functionaries', name: 'Lupon' }, { section: 'staff', name: 'Barangay Clerk' }] },
   };
   const cleanup = mountVisibility(root, services, () => true); await flush();
   try {
-    assert.match(root.textContent, /Directory group headings/);
+    assert.match(root.textContent, /Directory subcategories/);
     assert.ok([...root.querySelectorAll('.visibility-card h3')].some(node => node.textContent === 'Lupon'));
     let directoryCard = [...root.querySelectorAll('.visibility-card')].find(card => card.querySelector('h3')?.textContent === 'Directory');
     const toggle = directoryCard.querySelector('input'); toggle.checked = false; toggle.dispatchEvent(new window.Event('change', { bubbles: true }));

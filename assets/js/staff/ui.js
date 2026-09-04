@@ -124,7 +124,7 @@ export function fieldsForm(fields, original = {}) {
 }
 
 /** A single modal owns its asynchronous save and guards closing/back navigation. */
-export function editorDialog({ title, fields, original = {}, onSave, afterSave, description = '', saveLabel = 'Save changes' }) {
+export function editorDialog({ title, fields, original = {}, onSave, afterSave, onMount, description = '', saveLabel = 'Save changes' }) {
   const dialog = el('dialog', '', { class: 'edit-dialog', 'aria-label': title });
   const top = el('div', '', { class: 'dialog-heading' }); top.append(el('h2', title));
   const { form, controls, values } = fieldsForm(fields, original);
@@ -145,7 +145,10 @@ export function editorDialog({ title, fields, original = {}, onSave, afterSave, 
   form.addEventListener('submit', async event => {
     event.preventDefault(); if (busy) return; busy = true; message.textContent = 'Saving…';
     const currentValues = values(); const file = controls.get('upload')?.files?.[0];
-    form.querySelectorAll('input,textarea,select,button').forEach(node => { node.disabled = true; });
+    // Preserve category-dependent disabled states when a failed request restores the form.
+    const interactive = [...form.querySelectorAll('input,textarea,select,button')];
+    const disabledBeforeSave = new Map(interactive.map(node => [node, node.disabled]));
+    interactive.forEach(node => { node.disabled = true; });
     try {
       const result = await onSave(currentValues, file);
       if (disposed) return;
@@ -156,12 +159,14 @@ export function editorDialog({ title, fields, original = {}, onSave, afterSave, 
       message.setAttribute('role', 'alert');
       // Keep a successfully uploaded file's link in the form after an uncertain record save.
       if (error.retainedUpload) {
-        const link = [...controls.entries()].find(([key]) => /^(file|image|photo|cover|logo)_url$/.test(key));
+        const link = [...controls.entries()].find(([key]) => /(?:^|_)(file|image|photo|cover|logo)_url$/.test(key));
         if (link) link[1].value = error.retainedUpload.url;
         if (controls.has('upload')) controls.get('upload').value = '';
       }
-    } finally { busy = false; if (!disposed) form.querySelectorAll('input,textarea,select,button').forEach(node => { node.disabled = false; }); }
+    } finally { busy = false; if (!disposed) interactive.forEach(node => { node.disabled = disabledBeforeSave.get(node); }); }
   });
+  // Specialized screens may connect dependent controls after the safe shared form exists.
+  onMount?.({ dialog, form, controls });
   dialog.showModal();
   dispose.canLeave = () => disposed || canLeave();
   return dispose;

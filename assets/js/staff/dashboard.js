@@ -17,28 +17,32 @@ export function mountDashboard(root, services, isAdmin, isCurrent) {
   root.append(slots);
   async function load() {
     const request = ++sequence; refresh.disabled = true; slots.replaceChildren(el('p', 'Loading current totals…', { class: 'notice' }));
-    const [content, ids, accounts] = await Promise.allSettled([services.content.overview(), isAdmin ? services.verification.overview() : Promise.resolve(null), isAdmin ? services.editors.list() : Promise.resolve(null)]);
+    const [content, directory, ids, accounts] = await Promise.allSettled([services.content.overview(), services.directory.overview(), isAdmin ? services.verification.overview() : Promise.resolve(null), isAdmin ? services.editors.list() : Promise.resolve(null)]);
     if (disposed || !isCurrent() || request !== sequence) return;
     slots.replaceChildren();
     const cards = el('div', '', { class: 'metric-grid' });
     if (content.status === 'fulfilled') {
-      const rows = content.value;
-      const total = rows.every(r => r.total != null) ? rows.reduce((n, r) => n + r.total, 0) : null;
-      const published = rows.every(r => r.published != null) ? rows.reduce((n, r) => n + r.published, 0) : null;
-      cards.append(metric('Published content', published, 'Visible to residents', 'highlight'), metric('Drafts & hidden', total != null && published != null ? total - published : null, 'Ready for your review'), metric('Content modules', rows.length, 'Connected to existing data'));
+      // The old officials table is retained for recovery, but live personnel counts
+      // now come from verification records through the privacy-limited Directory RPC.
+      const rows = content.value.filter(row => row.table !== 'officials');
+      const directoryRows = directory.status === 'fulfilled' ? directory.value.map(row => ({ ...row, table: `directory-${row.section}`, recent: [] })) : [];
+      const metricRows = [...rows, ...directoryRows];
+      const total = metricRows.length && metricRows.every(r => r.total != null) ? metricRows.reduce((n, r) => n + r.total, 0) : null;
+      const published = metricRows.length && metricRows.every(r => r.published != null) ? metricRows.reduce((n, r) => n + r.published, 0) : null;
+      cards.append(metric('Published content', published, 'Visible to residents', 'highlight'), metric('Drafts & hidden', total != null && published != null ? total - published : null, 'Ready for your review'), metric('Content modules', metricRows.length, 'Connected to existing data'));
       if (isAdmin) {
         const pending = accounts.status === 'fulfilled' ? (accounts.value.applications || []).filter(row => row.status === 'pending').length : null;
         cards.append(metric('Pending applications', pending, 'Content Admin access requests'));
       }
       slots.append(cards);
       const graphs = el('div', '', { class: 'dashboard-grid' });
-      graphs.append(barChart('Public content by module', rows.map(r => ({ label: r.label, value: r.published })), 'Current published / active records. Not page visits.'));
+      graphs.append(barChart('Public content by module', metricRows.map(r => ({ label: r.label, value: r.published })), 'Current published / active records. Not page visits.'));
       const recent = el('section', '', { class: 'dashboard-panel' }); recent.append(el('h3', 'Recent content updates'));
       const activity = rows.flatMap(r => r.recent).sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 6);
       if (!activity.length) recent.append(el('p', 'Updates appear here after content is added or edited.', { class: 'empty' }));
       activity.forEach(item => { const line = el('a', '', { class: 'activity-item', href: `#${item.table}` }); line.append(el('strong', item.title || CONTENT[item.table].label), el('small', `${CONTENT[item.table].label} · ${dateText(item.at)}`)); recent.append(line); });
       graphs.append(recent); slots.append(graphs);
-      if (rows.some(row => row.error)) slots.append(el('p', 'Some content metrics could not be loaded. Refresh to retry; missing values are not counted as zero.', { class: 'notice' }));
+      if (rows.some(row => row.error) || directory.status === 'rejected') slots.append(el('p', 'Some content metrics could not be loaded. Refresh to retry; missing values are not counted as zero.', { class: 'notice' }));
     } else slots.append(el('p', 'Content overview unavailable: ' + content.reason.message, { class: 'notice' }));
     if (isAdmin) {
       if (ids.status === 'fulfilled') {

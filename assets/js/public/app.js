@@ -24,9 +24,9 @@ const PUBLIC_ROUTES = Object.freeze({
   forms: { table: 'forms', title: 'Downloadable Forms' },
   contact: { title: 'Contact Us', contact: true },
   pages: { table: 'pages', title: 'Barangay Profile', intro: 'Published barangay profile and development information based on the BDP 2026.' },
-  officials: { table: 'officials', title: 'Barangay Officials', roster: true },
-  staff: { table: 'directory_entries', title: 'Barangay Staff', categories: DIRECTORY_GROUPS.staff, alphabetical: true, grouped: true, intro: 'Published personnel assigned to the Barangay Local Government Unit.' },
-  functionaries: { table: 'directory_entries', title: 'Barangay Functionaries', excludeCategories: [...DIRECTORY_GROUPS.contacts, ...DIRECTORY_GROUPS.staff], alphabetical: true, grouped: true, intro: 'Published functionary groups and members using the exact headings saved by the barangay.' },
+  officials: { table: 'officials', directorySection: 'officials', title: 'Barangay Officials', roster: true },
+  staff: { table: 'directory_entries', directorySection: 'staff', title: 'Barangay Staff', grouped: true, intro: 'Published personnel assigned to the Barangay Local Government Unit.' },
+  functionaries: { table: 'directory_entries', directorySection: 'functionaries', title: 'Barangay Functionaries', grouped: true, intro: 'Published functionary groups and members using the exact headings saved by the barangay.' },
   disclosures: { table: 'disclosures', title: 'Transparency & Reports' },
   gallery_items: { table: 'gallery_items', title: 'Community Gallery' },
   directory_entries: { table: 'directory_entries', title: 'Contact Directory', categories: DIRECTORY_GROUPS.contacts },
@@ -80,12 +80,18 @@ export async function startPublicPage({ services: injectedServices } = {}) {
           try { covers = await stopCovers.refresh(); if (!isCurrent()) return; }
           catch { covers = []; }
           if (!isCurrent()) return;
-          const visibleTables = Object.keys(CONTENT).filter(table => moduleVisible(visibility, table));
+          // Officials now come from existing ID people through a public-safe RPC;
+          // the old officials table is left untouched and is no longer duplicated here.
+          const visibleTables = Object.keys(CONTENT).filter(table => table !== 'officials' && moduleVisible(visibility, table));
           const results = await Promise.all(visibleTables.map(async table => {
             const options = table === 'directory_entries' ? { categories: DIRECTORY_GROUPS.contacts } : {};
             try { return { table, data: await services.content.list(table, { publicOnly: true, pageSize: 3, ...options }) }; }
             catch { return { table, error: true }; }
           }));
+          if (moduleVisible(visibility, 'officials')) {
+            try { results.push({ table: 'officials', data: await services.directory.listPublic({ section: 'officials', pageSize: 3 }) }); }
+            catch { results.push({ table: 'officials', error: true }); }
+          }
           if (!isCurrent()) return;
           homeData = {}; homeErrors = {};
           results.forEach(({ table, data, error }) => { homeData[table] = data?.rows || []; if (error) homeErrors[table] = true; });
@@ -153,9 +159,11 @@ export async function startPublicPage({ services: injectedServices } = {}) {
               const hiddenGroups = hiddenDirectoryGroups(visibility);
               const categories = (routeInfo.categories || []).filter(category => !hiddenGroups.includes(category));
               const excludeCategories = [...(routeInfo.excludeCategories || []), ...hiddenGroups];
-              const data = routeInfo.categories?.length && !categories.length
-                ? { rows: [], count: 0 }
-                : await services.content.list(routeInfo.table, { publicOnly: true, page, search: searchValue, categories, excludeCategories, alphabetical: routeInfo.alphabetical === true });
+              const data = routeInfo.directorySection
+                ? await services.directory.listPublic({ section: routeInfo.directorySection, page, pageSize: 50, excludedSubcategories: hiddenGroups })
+                : routeInfo.categories?.length && !categories.length
+                  ? { rows: [], count: 0 }
+                  : await services.content.list(routeInfo.table, { publicOnly: true, page, search: searchValue, categories, excludeCategories, alphabetical: routeInfo.alphabetical === true });
               if (!isCurrent()) return;
               if (routeInfo.roster) {
                 // Rebuild the lightweight hierarchy after each page so position tiers stay ordered.

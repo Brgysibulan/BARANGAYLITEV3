@@ -7,7 +7,7 @@ Destination: `Brgysibulan/BARANGAYLITEV3`, based on its initial README commit.
 
 ## Non-destructive boundary
 
-The legacy repository is a read-only reference. No legacy file was removed or overwritten. No database migration, seed, row update/delete, Auth mutation, password reset, storage upload/delete, or Edge Function deployment was performed during this work. The unrelated WebSaaS project is not referenced by the runtime.
+The legacy repository is a read-only reference. No legacy file was removed or overwritten. The original 2026-09-02 rewiring performed no database migration. On 2026-09-04, two additive Directory migrations added classification metadata and limited RPCs to the existing verification table; they did not seed, assign, publish, update, or delete any person. No Auth mutation, password reset, storage deletion, or Edge Function deployment was performed. The unrelated WebSaaS project is not referenced by the runtime.
 
 The four legacy CSS files (`style.css`, `admin.css`, `admin-shell.css`, `access.css`) and Bootstrap CSS are intentionally **not copied into V3**. This is not deletion from the original website or from Supabase.
 
@@ -17,7 +17,8 @@ The four legacy CSS files (`style.css`, `admin.css`, `admin-shell.css`, `access.
 | --- | --- | --- |
 | `core/supabase-config.js` | `core/config.js`, `core/client.js` | Same project URL/publishable key; no injected shells, styles, service worker, or legacy-cache deletion |
 | Login and repeated staff guards | `core/auth.js` | `signInWithPassword`, server-validated user, `profiles.role` plus strict `is_active` |
-| Announcements, officials, services, directory, disclosures, gallery, forms | `data/contracts.js`, `data/content.js` | Existing table/column names, IDs, publish/active predicates, explicit CRUD |
+| Announcements, services, contact directory, disclosures, gallery, forms | `data/contracts.js`, `data/content.js` | Existing table/column names, IDs, publish/active predicates, explicit CRUD |
+| Officials, Staff, Functionaries | `data/directory.js`, `staff/directory-screen.js` | Existing `verification_records` identity plus Directory-only metadata and privacy-limited RPCs; no duplicated person record |
 | Site settings and maintenance | `data/settings.js` | Existing singleton `id=1`; field-level updates, no legacy theme overwrite |
 | Barangay profile | `data/settings.js` | Existing five `barangay-*` slugs, upsert on `slug`, preserve unedited fields |
 | File uploads | `data/storage.js` | Same four buckets and MIME/size limits; no automatic rewrite of existing URLs |
@@ -41,7 +42,7 @@ The three small new shells share the data services. Headless data code does not 
 - Uploads use new paths without upsert. If a record save fails or its response is lost, the new file is retained: the database write might have committed. The caller receives the retained upload reference for reconciliation before retrying.
 - Existing files are retained by default, including when content changes. An explicit `removeObject` operation validates project origin and bucket before deletion; link/reference checks and a clear UI confirmation are required before exposing file deletion in the UI.
 - V3 sessions are separated from old-site session storage, and sign-out is local rather than global.
-- No actual private records or credential/session values were copied into source or test fixtures.
+- No actual private records or credential/session values were copied into source or test fixtures. Public Directory calls return only published display fields from ACTIVE records.
 
 ## Verification completed
 

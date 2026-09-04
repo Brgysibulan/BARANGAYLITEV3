@@ -12,7 +12,7 @@ import { createVerification, extractQrToken } from '../assets/js/data/verificati
 import { createStorage, ownedObjectPath } from '../assets/js/data/storage.js';
 import { createEditors } from '../assets/js/data/editors.js';
 import { createApplications } from '../assets/js/data/applications.js';
-import { DIRECTORY_GROUPS } from '../assets/js/data/contracts.js';
+import { createDirectory } from '../assets/js/data/directory.js';
 import { SUPABASE_URL, AUTH_STORAGE_KEY } from '../assets/js/core/config.js';
 
 /** A thenable query builder records requests without touching the live database. */
@@ -94,14 +94,19 @@ test('public queries always apply the publish flag and pagination', async () => 
   assert.ok(client.log[0].steps.some(step => JSON.stringify(step) === JSON.stringify(['eq', 'is_published', true])));
   assert.ok(client.log[0].steps.some(step => JSON.stringify(step) === JSON.stringify(['range', 25, 49])));
 });
-test('public functionary queries accept local headings while excluding reserved directory groups', async () => {
-  const client = mockClient();
-  await createContent(client, denied).list('directory_entries', { publicOnly: true, excludeCategories: [...DIRECTORY_GROUPS.contacts, ...DIRECTORY_GROUPS.staff], alphabetical: true });
-  assert.deepEqual(client.log[0].steps.filter(step => step[0] === 'neq'), [
-    ['neq', 'category', 'Contact'], ['neq', 'category', 'Barangay Staff'],
-  ]);
-  assert.ok(client.log[0].steps.some(step => step[0] === 'order' && step[1] === 'category'));
-  assert.ok(client.log[0].steps.some(step => step[0] === 'order' && step[1] === 'name'));
+test('public Directory reads use the limited RPC instead of enumerating verification records', async () => {
+  const client = mockClient({ result: { data: [{ id: 7, name: 'Public Person', designation: 'BHW', directory_section: 'functionaries', directory_subcategory: 'BHW', directory_sort_order: 2, total_count: 1 }], error: null } });
+  const result = await createDirectory(client, denied).listPublic({ section: 'functionaries', page: 1, pageSize: 10, excludedSubcategories: ['Lupon'] });
+  assert.deepEqual(client.log[0], { rpc: 'list_public_directory_records', args: { p_section: 'functionaries', p_offset: 10, p_limit: 10, p_excluded_subcategories: ['Lupon'] } });
+  assert.equal(result.rows[0].role_title, 'BHW');
+  assert.equal(result.rows[0].category, 'BHW');
+  assert.equal(result.count, 1);
+});
+test('staff Directory writes change classification only and never send ID identity fields', async () => {
+  const client = mockClient({ result: { data: [{ id: 7, name: 'Existing Person', designation: 'Clerk', directory_section: 'staff', directory_subcategory: 'Barangay Clerk', directory_sort_order: 4, directory_is_published: true, directory_is_eligible: true }], error: null } });
+  const result = await createDirectory(client, allowed).save({ id: 7, section: 'staff', subcategory: 'Barangay Clerk', photoUrl: 'https://example.com/person.webp', sortOrder: 4, isPublished: true, control_number: 'must-not-send', name: 'must-not-send' });
+  assert.deepEqual(client.log[0], { rpc: 'staff_save_directory_record', args: { p_id: 7, p_section: 'staff', p_subcategory: 'Barangay Clerk', p_photo_url: 'https://example.com/person.webp', p_sort_order: 4, p_is_published: true } });
+  assert.equal(result.name, 'Existing Person');
 });
 test('public callers cannot enumerate profiles, verification records, or settings through generic content', async () => {
   for (const table of ['profiles', 'verification_records', 'site_settings', '__proto__']) {
