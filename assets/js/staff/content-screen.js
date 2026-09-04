@@ -3,22 +3,49 @@
  * Depends on: existing data/storage services, shared form components, and lazy QR/image tools.
  * Debug: errors stay beside the operation; page generations prevent stale request repainting.
  */
-import { CONTENT, VERIFICATION_FIELDS, DIRECTORY_CATEGORY_OPTIONS } from '../data/contracts.js';
+import { CONTENT, VERIFICATION_FIELDS, DIRECTORY_CATEGORY_OPTIONS, DIRECTORY_GROUPS } from '../data/contracts.js';
 import { element as el } from '../core/dom.js';
 import { button, heading, badge, recordTable, editorDialog, confirmationDialog, detailsDialog, dateText } from './ui.js';
 import { fullName, idStatus } from '../data/id-model.js';
 
+/** Staff routes can present focused Directory managers without duplicating the live table. */
+const DIRECTORY_SCREENS = Object.freeze({
+  'directory-staff': Object.freeze({
+    table: 'directory_entries', label: 'Barangay Staff', itemLabel: 'staff member', fixedCategory: 'Barangay Staff',
+    listOptions: Object.freeze({ categories: DIRECTORY_GROUPS.staff, alphabetical: true }),
+    description: 'Manage Barangay Staff records. Saved changes automatically appear on the public Staff directory when marked active.',
+  }),
+  'directory-functionaries': Object.freeze({
+    table: 'directory_entries', label: 'Barangay Functionaries', itemLabel: 'functionary',
+    listOptions: Object.freeze({ excludeCategories: Object.freeze([...DIRECTORY_GROUPS.contacts, ...DIRECTORY_GROUPS.staff]), alphabetical: true }),
+    categorySuggestions: DIRECTORY_GROUPS.functionaries,
+    forbiddenCategories: Object.freeze([...DIRECTORY_GROUPS.contacts, ...DIRECTORY_GROUPS.staff]),
+    description: 'Manage functionaries by their exact group heading. Active records automatically appear in the matching public Functionaries group.',
+  }),
+});
+
+/** Resolve a staff-facing route to its one existing database table and fixed filters. */
+export function contentScreen(route) {
+  const variant = DIRECTORY_SCREENS[route];
+  const table = variant?.table || route;
+  const def = CONTENT[table];
+  if (!def) throw new Error('Unsupported content screen.');
+  return Object.freeze({ route, table, def, label: variant?.label || def.label, itemLabel: variant?.itemLabel, fixedCategory: variant?.fixedCategory, categorySuggestions: variant?.categorySuggestions, forbiddenCategories: variant?.forbiddenCategories || Object.freeze([]), listOptions: variant?.listOptions || Object.freeze({}), description: variant?.description });
+}
+
 /** Defaults publish nothing accidentally; edits send only fields the operator changed. */
-export function editFields(table, original = {}) {
-  const verification = table === 'verification'; const def = verification ? null : CONTENT[table];
+export function editFields(route, original = {}) {
+  const verification = route === 'verification';
+  const screen = verification ? null : contentScreen(route);
+  const table = screen?.table || route; const def = verification ? null : screen.def;
   const keys = verification ? VERIFICATION_FIELDS : def.fields;
-  return keys.filter(key => !['file_name', 'file_type', 'file_size'].includes(key)).map(key => {
+  return keys.filter(key => !['file_name', 'file_type', 'file_size'].includes(key) && !(screen?.fixedCategory && key === 'category')).map(key => {
     const field = { key, required: key === (def?.title || 'control_number') || (['pages', 'announcements'].includes(table) && key === 'slug') || (table === 'officials' && key === 'position') || (table === 'directory_entries' && key === 'category') };
     if (/^is_/.test(key)) Object.assign(field, { type: 'checkbox', default: false });
     else if (table === 'directory_entries' && key === 'category') {
       // A datalist suggests known values without forcing another barangay's designations.
       // The exact saved text becomes the public heading for a functionary group.
-      Object.assign(field, { suggestions: DIRECTORY_CATEGORY_OPTIONS, help: 'Use Contact, Barangay Staff, or type the exact functionary group heading used by your barangay.' });
+      Object.assign(field, { suggestions: screen?.categorySuggestions || DIRECTORY_CATEGORY_OPTIONS, help: route === 'directory-functionaries' ? 'Choose a common functionary group or type the exact local group heading used by your barangay.' : 'Use Contact, Barangay Staff, or type the exact functionary group heading used by your barangay.' });
     }
     else if (key === 'status') Object.assign(field, { options: ['ACTIVE', 'INACTIVE', 'EXPIRED'], default: 'ACTIVE' });
     else if (key === 'sort_order') Object.assign(field, { type: 'number', default: 0 });
@@ -39,10 +66,12 @@ export function editFields(table, original = {}) {
 function localDateTime(value) { if (!value) return ''; const d = new Date(value); if (Number.isNaN(d.getTime())) return ''; return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
 
 /** Mount returns cleanup immediately so navigation can protect an in-progress editor. */
-export function mountContent(root, table, services, isCurrent) {
-  const verification = table === 'verification'; const def = verification ? null : CONTENT[table];
+export function mountContent(root, route, services, isCurrent) {
+  const verification = route === 'verification';
+  const screen = verification ? null : contentScreen(route);
+  const table = screen?.table || route; const def = verification ? null : screen.def;
   const service = verification ? services.verification : services.content;
-  const itemLabel = verification ? 'ID record' : ({ announcements: 'announcement', services: 'service', officials: 'official', directory_entries: 'directory entry', disclosures: 'disclosure', forms: 'form', gallery_items: 'gallery item', pages: 'barangay page' })[table];
+  const itemLabel = verification ? 'ID record' : screen.itemLabel || ({ announcements: 'announcement', services: 'service', officials: 'official', directory_entries: 'directory entry', disclosures: 'disclosure', forms: 'form', gallery_items: 'gallery item', pages: 'barangay page' })[table];
   let dialog, page = 0, generation = 0, disposed = false;
   const message = el('p', '', { role: 'status', class: 'module-message' });
   const active = () => !disposed && isCurrent();
@@ -50,11 +79,15 @@ export function mountContent(root, table, services, isCurrent) {
     if (!active()) return;
     const original = { ...row }; if (row.published_at) original.published_at = localDateTime(row.published_at);
     let writePerformed = false;
-    dialog = editorDialog({ title: (row.id ? 'Edit ' : 'Add ') + itemLabel, fields: editFields(table, row), original,
+    dialog = editorDialog({ title: (row.id ? 'Edit ' : 'Add ') + itemLabel, fields: editFields(route, row), original,
       description: verification ? 'Existing QR tokens are retained. These details are visible only through the current verification rules.' : 'Only checked Published / Active records appear on the public website.',
       saveLabel: row.id ? 'Update record' : 'Create record',
       async onSave(values, file) {
         if (values.published_at) values.published_at = new Date(values.published_at).toISOString();
+        // The focused Staff manager owns this fixed category; operators never need
+        // to retype it and cannot accidentally move a record into Functionaries.
+        if (screen?.fixedCategory) values.category = screen.fixedCategory;
+        if (screen?.forbiddenCategories.includes(values.category)) throw new Error('Choose a Barangay Functionaries group, not Contact or Barangay Staff.');
         // Only changed values are patched; an unrelated update in another tab is not blanked.
         const payload = row.id ? Object.fromEntries(Object.entries(values).filter(([key, value]) => key === 'published_at' ? localDateTime(value) !== localDateTime(row[key]) : value !== (row[key] ?? null))) : values;
         if (!file && !Object.keys(payload).length) return row;
@@ -81,11 +114,11 @@ export function mountContent(root, table, services, isCurrent) {
   }
   function openDetails(row) {
     const name = verification ? row.control_number : row[def.title];
-    dialog = detailsDialog({ title: `View ${itemLabel}: ${name}`, fields: editFields(table, row), record: row });
+    dialog = detailsDialog({ title: `View ${itemLabel}: ${name}`, fields: editFields(route, row), record: row });
   }
-  heading(root, verification ? 'ID records & QR codes' : def.label, verification ? 'Create, view, update, delete, and download print-ready verification QR codes.' : `Create, view, update, and delete ${def.label.toLowerCase()} from one screen.`, [button(`+ Add ${itemLabel}`, () => openEditor(), true)]);
+  heading(root, verification ? 'ID records & QR codes' : screen.label, verification ? 'Create, view, update, delete, and download print-ready verification QR codes.' : screen.description || `Create, view, update, and delete ${screen.label.toLowerCase()} from one screen.`, [button(`+ Add ${itemLabel}`, () => openEditor(), true)]);
   const toolbar = el('form', '', { class: 'list-toolbar', role: 'search' });
-  const search = el('input', '', { type: 'search', maxlength: 100, placeholder: verification ? 'Search ID number…' : 'Search name or title…', 'aria-label': verification ? 'Search ID number' : 'Search name or title' });
+  const search = el('input', '', { type: 'search', maxlength: 100, placeholder: verification ? 'Search ID number…' : screen?.itemLabel ? `Search ${screen.label.toLowerCase()}…` : 'Search name or title…', 'aria-label': verification ? 'Search ID number' : `Search ${screen?.label || 'name or title'}` });
   const filter = el('select', '', { 'aria-label': verification ? 'Stored status filter' : 'Visibility filter' });
   (verification ? [['all', 'All stored statuses'], ['ACTIVE', 'Stored: ACTIVE'], ['INACTIVE', 'Stored: INACTIVE'], ['EXPIRED', 'Stored: EXPIRED']] : [['all', 'All records'], ['published', 'Published / active'], ['draft', 'Draft / hidden']]).forEach(([value, text]) => filter.append(el('option', text, { value })));
   const clearFilters = button('Clear filters', () => { search.value = ''; filter.value = 'all'; appliedSearch = ''; appliedFilter = 'all'; load(0); });
@@ -94,11 +127,16 @@ export function mountContent(root, table, services, isCurrent) {
   const previous = button('← Previous', () => load(page - 1)); const next = button('Next →', () => load(page + 1)); footer.append(summary, previous, next); root.append(toolbar, message, slot, footer);
   let appliedSearch = '', appliedFilter = 'all';
   toolbar.addEventListener('submit', event => { event.preventDefault(); appliedSearch = search.value.trim(); appliedFilter = filter.value; load(0); });
+  const directoryColumns = route === 'directory-staff'
+    ? [{ key: 'name' }, { key: 'role_title', label: 'Designation' }]
+    : route === 'directory-functionaries'
+      ? [{ key: 'name' }, { key: 'category', label: 'Functionary group' }, { key: 'role_title', label: 'Designation' }]
+      : null;
   const columns = verification ? [
     { key: 'control_number' }, { key: 'full_name', label: 'Name', render: fullName },
     { key: 'date_acquired', render: row => dateText(row.date_acquired) }, { key: 'expiration_date', render: row => dateText(row.expiration_date) },
     { key: 'status', label: 'Current validity', render: row => { const status = idStatus(row); return badge(status, status === 'Valid' ? 'good' : 'warning'); } },
-  ] : [{ key: def.title }, ...(['officials', 'directory_entries', 'forms', 'disclosures', 'gallery_items'].includes(table) ? [{ key: table === 'officials' ? 'position' : table === 'gallery_items' ? 'album' : 'category' }] : []), { key: def.flag, label: 'Visibility', render: row => badge(row[def.flag] ? 'Published' : 'Draft / hidden', row[def.flag] ? 'good' : '') }, { key: def.order, render: row => def.order.endsWith('_at') ? dateText(row[def.order]) : row[def.order] }];
+  ] : [...(directoryColumns || [{ key: def.title }, ...(['officials', 'directory_entries', 'forms', 'disclosures', 'gallery_items'].includes(table) ? [{ key: table === 'officials' ? 'position' : table === 'gallery_items' ? 'album' : 'category' }] : [])]), { key: def.flag, label: 'Visibility', render: row => badge(row[def.flag] ? 'Published' : 'Draft / hidden', row[def.flag] ? 'good' : '') }, { key: def.order, render: row => def.order.endsWith('_at') ? dateText(row[def.order]) : row[def.order] }];
   async function remove(row, trigger) {
     const name = verification ? row.control_number : row[def.title];
     const confirmed = await confirmationDialog({
@@ -122,7 +160,7 @@ export function mountContent(root, table, services, isCurrent) {
   async function load(target) {
     const request = ++generation; previous.disabled = next.disabled = true; summary.textContent = 'Loading…';
     try {
-      const options = { page: Math.max(0, target), pageSize: 20, search: appliedSearch, ...(verification ? { status: appliedFilter } : { visibility: appliedFilter }) };
+      const options = { page: Math.max(0, target), pageSize: 20, search: appliedSearch, ...(verification ? { status: appliedFilter } : { visibility: appliedFilter, ...screen.listOptions }) };
       const data = verification ? await service.list(options) : await service.list(table, options);
       if (!active() || request !== generation) return;
       if (!data.rows.length && target > 0) { await load(target - 1); return; }

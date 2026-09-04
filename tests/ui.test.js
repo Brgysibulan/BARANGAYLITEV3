@@ -8,7 +8,8 @@ import assert from 'node:assert/strict';
 import { parseHTML } from 'linkedom';
 import { editorDialog, fieldsForm, recordTable, labelFor, confirmationDialog, detailsDialog } from '../assets/js/staff/ui.js';
 import { verificationResult } from '../assets/js/public/verify.js';
-import { editFields } from '../assets/js/staff/content-screen.js';
+import { editFields, contentScreen, mountContent } from '../assets/js/staff/content-screen.js';
+import { STAFF_CONTENT_ROUTES } from '../assets/js/staff/workspace.js';
 import { mountStudio } from '../assets/js/design/studio.js';
 import { presetDesign } from '../assets/js/design/model.js';
 import { accessSurface, applyAccessCover } from '../assets/js/design/access-renderer.js';
@@ -73,6 +74,45 @@ test('directory CRUD suggests known headings but accepts the barangay exact cate
   form.querySelector('[name=category]').value = 'Exact Local Designation';
   assert.equal(form.querySelector('[name=category]').value, 'Exact Local Designation');
   assert.match(upload.label, /photo or icon/i);
+});
+test('admin Directory has focused Officials, Staff, and Functionaries managers', () => {
+  const directory = STAFF_CONTENT_ROUTES.filter(route => route.parent === 'directory');
+  assert.deepEqual(directory.map(route => route.label), ['Barangay Officials', 'Barangay Staff', 'Barangay Functionaries']);
+  assert.equal(STAFF_CONTENT_ROUTES.some(route => route.key === 'directory_entries'), false);
+  const staff = contentScreen('directory-staff');
+  const functionaries = contentScreen('directory-functionaries');
+  assert.equal(staff.table, 'directory_entries');
+  assert.deepEqual(staff.listOptions.categories, ['Barangay Staff']);
+  assert.equal(staff.fixedCategory, 'Barangay Staff');
+  assert.equal(editFields('directory-staff').some(field => field.key === 'category'), false);
+  assert.equal(functionaries.table, 'directory_entries');
+  assert.deepEqual(functionaries.listOptions.excludeCategories, ['Contact', 'Barangay Staff']);
+  const functionaryCategory = editFields('directory-functionaries').find(field => field.key === 'category');
+  assert.ok(functionaryCategory.suggestions.includes('BHW'));
+  assert.equal(functionaryCategory.suggestions.includes('Barangay Staff'), false);
+});
+test('Barangay Staff manager automatically reads and saves the Staff database category', async () => {
+  const root = document.createElement('main'); document.body.append(root);
+  let firstList, saved;
+  const services = { content: {
+    list: async (table, options) => { firstList ||= { table, options }; return { rows: [], count: 0 }; },
+    save: async (table, values, id) => { saved = { table, values, id }; return { id: 1, ...values }; },
+    remove: async () => ({}),
+  }, storage: { saveWithUpload: async () => ({}) } };
+  const cleanup = mountContent(root, 'directory-staff', services, () => true);
+  try {
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(firstList.table, 'directory_entries');
+    assert.deepEqual(firstList.options.categories, ['Barangay Staff']);
+    assert.match(root.textContent, /Barangay Staff/);
+    [...root.querySelectorAll('button')].find(node => node.textContent === '+ Add staff member').click();
+    assert.equal(document.querySelector('dialog [name=category]'), null);
+    document.querySelector('dialog [name=name]').value = 'Sample Staff';
+    document.querySelector('dialog form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(saved.table, 'directory_entries');
+    assert.equal(saved.values.category, 'Barangay Staff');
+  } finally { cleanup(); root.remove(); document.querySelector('dialog')?.remove(); }
 });
 test('directory cards use a neutral icon when no uploaded photo is available', () => {
   const card = contentCard('directory_entries', { category: 'BHW', name: 'Sample Functionary', role_title: 'Barangay Health Worker' });

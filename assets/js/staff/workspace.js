@@ -19,6 +19,19 @@ import { mountVisibility } from './visibility-screen.js';
 import { mountActivity } from './activity-screen.js';
 import { DELEGATED_MODULES } from '../data/permissions.js';
 
+/** Staff navigation groups one database-backed Directory into three focused managers. */
+export const STAFF_CONTENT_ROUTES = Object.freeze([
+  { key: 'announcements', label: CONTENT.announcements.label, glyph: '▤' },
+  { key: 'services', label: CONTENT.services.label, glyph: '◇' },
+  { key: 'officials', label: 'Barangay Officials', glyph: '♙', parent: 'directory' },
+  { key: 'directory-staff', label: 'Barangay Staff', glyph: '♧', parent: 'directory' },
+  { key: 'directory-functionaries', label: 'Barangay Functionaries', glyph: '♙', parent: 'directory' },
+  { key: 'disclosures', label: CONTENT.disclosures.label, glyph: '▧' },
+  { key: 'forms', label: CONTENT.forms.label, glyph: '⇩' },
+  { key: 'gallery_items', label: CONTENT.gallery_items.label, glyph: '▣' },
+  { key: 'pages', label: CONTENT.pages.label, glyph: '▥' },
+]);
+
 /** Verify an active database profile before revealing any staff navigation or private records. */
 export async function startWorkspace(workspace) {
   const status = document.querySelector('#status'), view = document.querySelector('#view');
@@ -39,28 +52,33 @@ export async function startWorkspace(workspace) {
     const staff = await services.auth.requireStaff(isAdmin ? ['admin'] : ['admin', 'editor']);
     identity.textContent = staff.profile.display_name || staff.user.email;
     signout.hidden = false;
-    const routes = [['dashboard', 'Overview', '◫'], ...Object.entries(CONTENT).map(([key, def], i) => [key, def.label, ['▤', '◇', '♙', '☷', '▧', '⇩', '▣', '▥'][i]])];
+    const routes = [{ key: 'dashboard', label: 'Overview', glyph: '◫' }, ...STAFF_CONTENT_ROUTES];
     const delegated = await services.permissions.mine(staff);
     const protectedRoutes = [
-      ['verification', 'ID records & QR', '▦', 'verification'],
-      ['covers', 'Cover photos', '▣', 'covers'],
-      ['design-studio', 'Design Studio', '◈', 'design_studio'],
-      ['settings', 'Page settings', '⚙', 'page_settings'],
-      ['visibility', 'Public visibility', '◉', 'public_visibility'],
-      ['usage', 'System status & usage', '◷', 'system_usage'],
+      { key: 'verification', label: 'ID records & QR', glyph: '▦', permission: 'verification' },
+      { key: 'covers', label: 'Cover photos', glyph: '▣', permission: 'covers' },
+      { key: 'design-studio', label: 'Design Studio', glyph: '◈', permission: 'design_studio' },
+      { key: 'settings', label: 'Page settings', glyph: '⚙', permission: 'page_settings' },
+      { key: 'visibility', label: 'Public visibility', glyph: '◉', permission: 'public_visibility' },
+      { key: 'usage', label: 'System status & usage', glyph: '◷', permission: 'system_usage' },
     ];
-    routes.push(...protectedRoutes.filter(([, , , permission]) => isAdmin || delegated[permission]));
-    if (isAdmin) routes.push(['editors', 'Content Admins', '♙'], ['activity', 'Activity & analytics', '◌']);
+    routes.push(...protectedRoutes.filter(item => isAdmin || delegated[item.permission]));
+    if (isAdmin) routes.push({ key: 'editors', label: 'Content Admins', glyph: '♙' }, { key: 'activity', label: 'Activity & analytics', glyph: '◌' });
     nav.replaceChildren();
     const navBrand = el('div', '', { class: 'nav-brand' }); navBrand.append(el('span', 'B', { class: 'nav-mark', 'aria-hidden': 'true' }), el('strong', 'Barangay workspace'), el('small', isAdmin ? 'SYSTEM ADMIN' : 'CONTENT ADMIN')); nav.append(navBrand);
     const list = el('ul');
-    let managementGroupAdded = false;
-    routes.forEach(([key, label, glyph], index) => {
+    let directoryGroupAdded = false, managementGroupAdded = false;
+    routes.forEach(({ key, label, glyph, parent }, index) => {
       if (index === 1) list.append(el('li', 'PUBLIC CONTENT', { class: 'nav-group' }));
-      if (!managementGroupAdded && protectedRoutes.some(([route]) => route === key)) {
+      if (parent === 'directory' && !directoryGroupAdded) {
+        const directory = el('li', '', { class: 'nav-directory-parent' });
+        directory.append(el('span', '☷', { class: 'nav-icon', 'aria-hidden': 'true' }), el('strong', 'Directory'));
+        list.append(directory); directoryGroupAdded = true;
+      }
+      if (!managementGroupAdded && protectedRoutes.some(item => item.key === key)) {
         list.append(el('li', isAdmin ? 'SYSTEM MANAGEMENT' : 'TEMPORARY ACCESS', { class: 'nav-group' })); managementGroupAdded = true;
       }
-      const li = el('li'), link = el('a', '', { href: '#' + key }); link.append(el('span', glyph, { class: 'nav-icon', 'aria-hidden': 'true' }), el('span', label)); li.append(link); list.append(li);
+      const li = el('li', '', { class: parent === 'directory' ? 'nav-subitem' : null }), link = el('a', '', { href: '#' + key }); link.append(el('span', glyph, { class: 'nav-icon', 'aria-hidden': 'true' }), el('span', label)); li.append(link); list.append(li);
     });
     nav.append(list, el('p', 'Existing data. Clearer controls.', { class: 'nav-footnote' })); nav.hidden = false;
     const menu = el('button', '☰ Modules', { type: 'button', class: 'menu-toggle', 'aria-controls': 'navigation', 'aria-expanded': 'false' });
@@ -78,10 +96,10 @@ export async function startWorkspace(workspace) {
     });
     getClient().auth.onAuthStateChange(event => { if (event === 'SIGNED_OUT') lock('Signed out.'); });
     stopRouter = startRouter(async (route, isCurrent) => {
-      const item = routes.find(([key]) => key === route); view.replaceChildren(); currentCleanup = null;
+      const item = routes.find(entry => entry.key === route); view.replaceChildren(); currentCleanup = null;
       document.querySelector('#workspace-title').hidden = true;
       if (!item) { status.textContent = 'Module not found.'; return; }
-      document.title = item[1] + ' — BRGYWEBLITEV3';
+      document.title = item.label + ' — BRGYWEBLITEV3';
       nav.querySelectorAll('a').forEach(link => { if (link.hash === '#' + route) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current'); });
       status.textContent = 'Checking workspace access…';
       try {
