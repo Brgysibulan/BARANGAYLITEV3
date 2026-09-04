@@ -11,7 +11,7 @@ import { verificationResult } from '../assets/js/public/verify.js';
 import { editFields } from '../assets/js/staff/content-screen.js';
 import { mountStudio } from '../assets/js/design/studio.js';
 import { presetDesign } from '../assets/js/design/model.js';
-import { accessSurface } from '../assets/js/design/access-renderer.js';
+import { accessSurface, applyAccessCover } from '../assets/js/design/access-renderer.js';
 import { contentCard, officialsRoster, publicHome, publicFooter, publicHeader } from '../assets/js/design/public-renderer.js';
 import { CAROUSEL_INTERVAL_MS } from '../assets/js/public/carousel.js';
 import { installPhotoViewer } from '../assets/js/public/photo-viewer.js';
@@ -237,6 +237,17 @@ test('English interface copy does not translate stored barangay content', () => 
   assert.equal(showRecords([], []).textContent, 'No records yet.');
   assert.match(accessSurface('login').textContent, /Use your existing email and password/);
   assert.match(contentCard('announcements', { title: 'Pabatid sa mga residente', excerpt: 'Libreng serbisyo' }).textContent, /Pabatid sa mga residenteLibreng serbisyo/);
+});
+test('Admin login says Welcome and reuses only the existing Cover 1 record', () => {
+  const root = accessSurface('login', { barangay_name: 'Sibulan' }); document.body.append(root);
+  try {
+    assert.equal(root.querySelector('.access-card h1').textContent, 'Welcome.');
+    assert.equal(applyAccessCover(root, { url: 'https://example.com/cover-one.webp', alt: 'Existing cover' }), true);
+    assert.equal(root.querySelectorAll('.access-cover-media img').length, 1);
+    assert.equal(root.querySelector('.access-cover-media img').getAttribute('src'), 'https://example.com/cover-one.webp');
+    assert.equal(applyAccessCover(root, { url: 'javascript:alert(1)' }), false);
+    assert.equal(root.querySelector('.access-cover-media'), null);
+  } finally { root.remove(); }
 });
 test('saved Dashboard cover is reused inside the public hero without a duplicate image source', () => {
   const cover = { id: 'barangay-hall', url: 'https://example.com/barangay-hall.webp', alt: 'Barangay hall', caption: 'Public service center' };

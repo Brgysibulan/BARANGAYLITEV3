@@ -29,12 +29,13 @@ export function createCovers(client, auth) {
   async function read() { return coverSnapshot(unwrap(await client.from('site_settings').select(SELECT).eq('id', 1).single())); }
   /** Compare the entire prior JSON so publishing a theme and covers cannot overwrite each other. */
   async function save(slides, baseline) {
-    await auth.requireStaff(['admin']);
+    await auth.requirePermission('covers');
     if (!baseline || !Object.hasOwn(baseline, 'raw')) throw new Error('Reload the cover photos before saving.');
     const next = { ...(baseline.raw || {}), [KEY]: { version: 1, slides: validateCovers(slides) } };
-    let query = client.from('site_settings').update({ design_theme: next }).eq('id', 1);
-    query = baseline.raw === null ? query.is('design_theme', null) : query.eq('design_theme', JSON.stringify(baseline.raw));
-    const row = unwrap(await query.select(SELECT).maybeSingle());
+    const rows = unwrap(await client.rpc('staff_update_design_namespace', {
+      p_permission: 'covers', p_namespace: KEY, p_expected: baseline.raw, p_next: next,
+    }));
+    const row = Array.isArray(rows) ? rows[0] : rows;
     if (!row) throw new Error('Settings changed in another tab or access was revoked. Reload before saving; your draft is still here.');
     return coverSnapshot(row);
   }

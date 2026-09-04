@@ -107,7 +107,11 @@ export function contentCard(table, row) {
     }
   }
   if (row.content) { const details = el('details'); details.append(el('summary', 'Read more'), el('p', row.content, { class: 'body-copy' })); card.append(details); }
-  if (row.file_url) card.append(safeLink(row.file_url, 'View / download document ↗'));
+  if (row.file_url) {
+    const link = safeLink(row.file_url, 'View / download document ↗');
+    if (['forms', 'disclosures'].includes(table)) link.dataset.publicMetric = `download.${table}`;
+    card.append(link);
+  }
   if (row.contact) card.append(el('p', row.contact));
   if (row.location) card.append(el('p', row.location));
   if (row.published_at || row.document_date) {

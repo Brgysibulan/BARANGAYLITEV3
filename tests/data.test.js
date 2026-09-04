@@ -48,8 +48,11 @@ function mockClient({ result = { data: [], error: null, count: 0 }, user = { id:
   };
   return client;
 }
-const allowed = { requireStaff: async () => ({ profile: { role: 'admin' } }) };
-const denied = { requireStaff: async () => { throw new Error('denied'); } };
+const allowed = {
+  requireStaff: async () => ({ user: { id: '12345678-1234-4123-8123-123456789012' }, profile: { role: 'admin' } }),
+  requirePermission: async () => ({ user: { id: '12345678-1234-4123-8123-123456789012' }, profile: { role: 'admin' } }),
+};
+const denied = { requireStaff: async () => { throw new Error('denied'); }, requirePermission: async () => { throw new Error('denied'); } };
 
 test('same Supabase project, but V3 never overwrites the legacy session key', () => {
   assert.equal(SUPABASE_URL, 'https://pkvorwvkqjnbgktkgjhr.supabase.co');
@@ -127,17 +130,17 @@ test('invalid pagination and unsafe URLs are rejected', async () => {
   await assert.rejects(content.save('officials', { full_name: 'Name', photo_url: 'javascript:alert(1)' }), /HTTPS/);
 });
 test('site settings cannot overwrite old design or colors', async () => {
-  const client = mockClient();
+  const row = { id: 1, barangay_name: 'Barangay' };
+  const client = mockClient({ result: { data: [row], error: null } });
   await createSettings(client, allowed).update({ barangay_name: 'Barangay', design_theme: {}, primary_color: '#000' });
-  assert.deepEqual(client.log[0].steps.find(step => step[0] === 'update'), ['update', { barangay_name: 'Barangay' }]);
-  assert.ok(!client.log[0].steps.find(step => step[0] === 'select')[1].includes('design_theme'));
+  assert.deepEqual(client.log[0], { rpc: 'staff_update_site_settings', args: { p_patch: { barangay_name: 'Barangay' } } });
 });
-test('settings and verification restrict roles to System Admin', async () => {
-  const roles = [];
-  const auth = { requireStaff: async values => { roles.push(values); } };
-  await createSettings(mockClient(), auth).update({ barangay_name: 'Barangay' });
+test('settings and verification require their exact protected permission', async () => {
+  const permissions = [];
+  const auth = { requirePermission: async value => { permissions.push(value); } };
+  await createSettings(mockClient({ result: { data: [{ id: 1, barangay_name: 'Barangay' }], error: null } }), auth).update({ barangay_name: 'Barangay' });
   await createVerification(mockClient(), auth).list();
-  assert.deepEqual(roles, [['admin'], ['admin']]);
+  assert.deepEqual(permissions, ['page_settings', 'verification']);
 });
 test('saving profile sections preserves existing summary and uses existing slug conflict key', async () => {
   const client = mockClient();

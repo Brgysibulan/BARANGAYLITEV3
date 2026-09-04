@@ -15,11 +15,15 @@ import { createDesign } from '../data/design.js';
 import { createCovers } from '../data/covers.js';
 import { createUsage } from '../data/usage.js';
 import { createVisibility } from '../data/visibility.js';
+import { createPermissions } from '../data/permissions.js';
+import { createActivity } from '../data/activity.js';
 
 /** Dependency injection keeps tests away from production accounts and records. */
 export function createServices(client) {
   const auth = createAuth(client);
   const content = createContent(client, auth);
+  const permissions = createPermissions(client, auth);
+  const activity = createActivity(client, auth);
   return Object.freeze({
     auth, content,
     settings: createSettings(client, auth),
@@ -31,6 +35,8 @@ export function createServices(client) {
     covers: createCovers(client, auth),
     visibility: createVisibility(client, auth),
     usage: createUsage(client, auth),
+    permissions,
+    activity,
   });
 }
 /** Browser entry point: service wrappers share the single configured client. */

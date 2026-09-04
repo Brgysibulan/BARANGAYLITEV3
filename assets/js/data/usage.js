@@ -1,5 +1,5 @@
 /**
- * Purpose: admin-only service health and measured usage, with explicit unknown billing values.
+ * Purpose: permission-protected service health and measured usage, with explicit unknown billing values.
  * Depends on: existing Storage listing/RLS and public GitHub REST metadata; no new backend.
  * Debug: partial failures are separate from provider outages; refresh is user-driven and cached.
  */
@@ -50,7 +50,7 @@ export function createUsage(client, auth, fetcher = globalThis.fetch) {
   }
   /** Recheck the real profile even on cache hits. Nothing is saved to public settings/storage. */
   async function read({ force = false } = {}) {
-    await auth.requireStaff(['admin']);
+    await auth.requirePermission('system_usage');
     if (cache && (!force || Date.now() - cache.time < 60000)) return cache.value;
     const [supabase, git] = await Promise.allSettled([
       storageUsage(), github(),

@@ -46,13 +46,19 @@ export async function startPublicPage({ services: injectedServices } = {}) {
   let currentRoute;
   let homeErrors = {};
   let covers = [], homeCleanup;
-  let stopAvailability, stopVisibility, stopCovers, stopRouter, stopDesign, disposed = false;
+  let stopAvailability, stopVisibility, stopCovers, stopRouter, stopDesign, stopMetricClicks, disposed = false;
   const stopPhotoViewer = installPhotoViewer(root);
   const showHome = () => { homeCleanup?.(); const home = publicHome(settings, homeData, config, { errors: homeErrors, covers, visibility }); root.replaceChildren(home); homeCleanup = home.dispose; };
-  const cleanup = () => { disposed = true; stopAvailability?.(); stopVisibility?.(); stopCovers?.(); stopRouter?.(); stopDesign?.(); homeCleanup?.(); stopPhotoViewer(); };
+  const cleanup = () => { disposed = true; stopAvailability?.(); stopVisibility?.(); stopCovers?.(); stopRouter?.(); stopDesign?.(); stopMetricClicks?.(); homeCleanup?.(); stopPhotoViewer(); };
   window.addEventListener('pagehide', cleanup, { once: true });
   try {
     const services = injectedServices || getServices();
+    const metricClick = event => {
+      const key = event.target.closest?.('[data-public-metric]')?.dataset.publicMetric;
+      if (key) services.activity?.recordPublic?.(key).catch(() => {});
+    };
+    root.addEventListener('click', metricClick);
+    stopMetricClicks = () => root.removeEventListener('click', metricClick);
     const visibilityService = services.visibility || { read: async () => ({ config: defaultVisibility() }) };
     stopCovers = watchCovers(services.covers, next => {
       covers = next;
@@ -163,7 +169,11 @@ export async function startPublicPage({ services: injectedServices } = {}) {
           await load();
           }
         }
-        if (isCurrent()) { document.title = (route === 'home' ? 'Home' : publicRoute(route).title) + ' — Barangay ' + settings.barangay_name; status.textContent = ''; }
+        if (isCurrent()) {
+          document.title = (route === 'home' ? 'Home' : publicRoute(route).title) + ' — Barangay ' + settings.barangay_name; status.textContent = '';
+          // Public analytics stores one approved counter only—never visitor identity or search text.
+          services.activity?.recordPublic?.(`page.${route}`).catch(() => {});
+        }
         if (route === 'home') {
           const ownedCleanup = homeCleanup;
           return () => { ownedCleanup?.(); if (homeCleanup === ownedCleanup) homeCleanup = undefined; };

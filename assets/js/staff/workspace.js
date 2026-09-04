@@ -16,6 +16,8 @@ import { mountDashboard, mountUsage } from './dashboard.js';
 import { mountSettings, mountCovers } from './settings-screen.js';
 import { mountAccounts } from './accounts-screen.js';
 import { mountVisibility } from './visibility-screen.js';
+import { mountActivity } from './activity-screen.js';
+import { DELEGATED_MODULES } from '../data/permissions.js';
 
 /** Verify an active database profile before revealing any staff navigation or private records. */
 export async function startWorkspace(workspace) {
@@ -38,12 +40,26 @@ export async function startWorkspace(workspace) {
     identity.textContent = staff.profile.display_name || staff.user.email;
     signout.hidden = false;
     const routes = [['dashboard', 'Overview', '◫'], ...Object.entries(CONTENT).map(([key, def], i) => [key, def.label, ['▤', '◇', '♙', '☷', '▧', '⇩', '▣', '▥'][i]])];
-    if (isAdmin) routes.push(['verification', 'ID records & QR', '▦'], ['covers', 'Cover photos', '▣'], ['design-studio', 'Design Studio', '◈'], ['settings', 'Page settings', '⚙'], ['visibility', 'Public visibility', '◉'], ['editors', 'Content Admins', '♙'], ['usage', 'System status & usage', '◷']);
+    const delegated = await services.permissions.mine(staff);
+    const protectedRoutes = [
+      ['verification', 'ID records & QR', '▦', 'verification'],
+      ['covers', 'Cover photos', '▣', 'covers'],
+      ['design-studio', 'Design Studio', '◈', 'design_studio'],
+      ['settings', 'Page settings', '⚙', 'page_settings'],
+      ['visibility', 'Public visibility', '◉', 'public_visibility'],
+      ['usage', 'System status & usage', '◷', 'system_usage'],
+    ];
+    routes.push(...protectedRoutes.filter(([, , , permission]) => isAdmin || delegated[permission]));
+    if (isAdmin) routes.push(['editors', 'Content Admins', '♙'], ['activity', 'Activity & analytics', '◌']);
     nav.replaceChildren();
     const navBrand = el('div', '', { class: 'nav-brand' }); navBrand.append(el('span', 'B', { class: 'nav-mark', 'aria-hidden': 'true' }), el('strong', 'Barangay workspace'), el('small', isAdmin ? 'SYSTEM ADMIN' : 'CONTENT ADMIN')); nav.append(navBrand);
     const list = el('ul');
+    let managementGroupAdded = false;
     routes.forEach(([key, label, glyph], index) => {
-      if (index === 1 || (isAdmin && key === 'verification')) { const group = el('li', index === 1 ? 'PUBLIC CONTENT' : 'SYSTEM MANAGEMENT', { class: 'nav-group' }); list.append(group); }
+      if (index === 1) list.append(el('li', 'PUBLIC CONTENT', { class: 'nav-group' }));
+      if (!managementGroupAdded && protectedRoutes.some(([route]) => route === key)) {
+        list.append(el('li', isAdmin ? 'SYSTEM MANAGEMENT' : 'TEMPORARY ACCESS', { class: 'nav-group' })); managementGroupAdded = true;
+      }
       const li = el('li'), link = el('a', '', { href: '#' + key }); link.append(el('span', glyph, { class: 'nav-icon', 'aria-hidden': 'true' }), el('span', label)); li.append(link); list.append(li);
     });
     nav.append(list, el('p', 'Existing data. Clearer controls.', { class: 'nav-footnote' })); nav.hidden = false;
@@ -54,7 +70,10 @@ export async function startWorkspace(workspace) {
     signout.addEventListener('click', async () => {
       if (currentCleanup?.canLeave && !currentCleanup.canLeave()) return;
       signout.disabled = true;
-      try { await services.auth.signOut(); lock('Signed out.'); location.replace('../login.html'); }
+      try {
+        await services.activity.recordStaff('auth.logout', 'authentication', 'Signed out of the staff workspace.').catch(() => {});
+        await services.auth.signOut(); lock('Signed out.'); location.replace('../login.html');
+      }
       catch (error) { status.textContent = error.message; signout.disabled = false; }
     });
     getClient().auth.onAuthStateChange(event => { if (event === 'SIGNED_OUT') lock('Signed out.'); });
@@ -66,8 +85,11 @@ export async function startWorkspace(workspace) {
       nav.querySelectorAll('a').forEach(link => { if (link.hash === '#' + route) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current'); });
       status.textContent = 'Checking workspace access…';
       try {
-        // Role visibility is a convenience; the service and existing RLS remain authoritative.
-        await services.auth.requireStaff(isAdmin ? ['admin'] : ['admin', 'editor']);
+        // Menu visibility is a convenience; every delegated route is checked again
+        // here and inside its data service before protected work is requested.
+        const delegatedModule = DELEGATED_MODULES.find(module => module.route === route);
+        if (!isAdmin && delegatedModule) await services.auth.requirePermission(delegatedModule.key);
+        else await services.auth.requireStaff(isAdmin ? ['admin'] : ['admin', 'editor']);
         if (!isCurrent()) return; status.textContent = '';
         if (route === 'design-studio') {
           const snapshot = await services.design.read(); if (!isCurrent()) return;
@@ -82,6 +104,7 @@ export async function startWorkspace(workspace) {
         else if (route === 'visibility') currentCleanup = mountVisibility(view, services, isCurrent);
         else if (route === 'covers') currentCleanup = mountCovers(view, services, isCurrent);
         else if (route === 'editors') currentCleanup = mountAccounts(view, services, isCurrent);
+        else if (route === 'activity') currentCleanup = mountActivity(view, services, isCurrent);
         else currentCleanup = mountContent(view, route, services, isCurrent);
         return currentCleanup;
       } catch (error) {

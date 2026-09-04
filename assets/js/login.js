@@ -4,7 +4,7 @@
  * Debug: form errors appear in #status; incorrect redirects require checking the live role.
  */
 import { getServices } from './core/services.js';
-import { accessSurface } from './design/access-renderer.js';
+import { accessSurface, applyAccessCover } from './design/access-renderer.js';
 import { watchDesign } from './design/runtime.js';
 import { designFailed } from './design/boot.js';
 import { brand } from './design/public-renderer.js';
@@ -16,12 +16,16 @@ function start() {
   const form = document.querySelector('#login-form');
   const status = document.querySelector('#status');
   const button = form.querySelector('button');
-  let auth;
+  let auth, services;
   try {
-    const services = getServices(); auth = services.auth;
+    services = getServices(); auth = services.auth;
     watchDesign(services.design).then(stop => window.addEventListener('pagehide', stop, { once: true }));
-    // Update only identity, never re-render a form after the user starts typing.
-    services.settings.read().then(settings => document.querySelector('.access-aside .brand')?.replaceWith(brand(settings))).catch(() => {});
+    // Update only identity and the decorative Cover 1 layer; never re-render a
+    // form after the user starts typing or copy the existing cover record.
+    Promise.allSettled([services.settings.read(), services.covers.read()]).then(([settingsResult, coversResult]) => {
+      if (settingsResult.status === 'fulfilled') document.querySelector('.access-aside .brand')?.replaceWith(brand(settingsResult.value));
+      if (coversResult.status === 'fulfilled') applyAccessCover(document.querySelector('#access-root'), coversResult.value.slides?.[0]);
+    });
   }
   catch (error) { designFailed(); status.textContent = error.message; button.disabled = true; return; }
   const requested = new URLSearchParams(location.search).get('next');
@@ -40,6 +44,8 @@ function start() {
     status.textContent = 'Signing in…';
     try {
       const staff = await auth.signIn(form.elements.email.value, form.elements.password.value);
+      // Audit failure must not trap a valid account on the login screen.
+      await services.activity.recordStaff('auth.login', 'authentication', 'Signed in to the staff workspace.').catch(() => {});
       form.elements.password.value = '';
       location.replace(destination(staff.profile.role));
     } catch (error) {

@@ -32,6 +32,11 @@ function visibilityClient(initial) {
       };
       return query;
     },
+    async rpc(name, args) {
+      calls.push({ rpc: name, args });
+      row = { ...row, design_theme: structuredClone(args.p_next), updated_at: '2026-09-03T00:00:00Z' };
+      return { data: [structuredClone(row)], error: null };
+    },
   };
 }
 
@@ -54,14 +59,15 @@ test('Directory master hides children without erasing their own saved switches',
 test('one visibility save preserves design, covers, and unrelated module settings', async () => {
   const original = { id: 1, design_theme: { legacy: 'keep', brgyweblitev3: { version: 1 }, brgyweblitev3_covers: { version: 1, slides: [] }, [VISIBILITY_KEY]: { version: 1, modules: { verify: false }, groups: { Lupon: false } } } };
   const client = visibilityClient(original); const roles = [];
-  const saved = await createVisibility(client, { requireStaff: async value => roles.push(value) }).saveModule('directory', false);
-  assert.deepEqual(roles, [['admin']]);
+  const saved = await createVisibility(client, { requirePermission: async value => roles.push(value) }).saveModule('directory', false);
+  assert.deepEqual(roles, ['public_visibility']);
   assert.equal(client.row().design_theme.legacy, 'keep');
   assert.deepEqual(client.row().design_theme.brgyweblitev3_covers, original.design_theme.brgyweblitev3_covers);
   assert.equal(saved.config.modules.directory, false);
   assert.equal(saved.config.modules.verify, false);
   assert.equal(saved.config.groups.Lupon, false);
-  assert.deepEqual(Object.keys(client.calls[1].update), ['design_theme']);
+  assert.equal(client.calls[1].rpc, 'staff_update_design_namespace');
+  assert.equal(client.calls[1].args.p_namespace, VISIBILITY_KEY);
 });
 
 test('hidden modules leave Home available while removing their links and previews', () => {

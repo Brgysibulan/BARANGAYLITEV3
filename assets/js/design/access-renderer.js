@@ -6,10 +6,24 @@
 import { element as el } from '../core/dom.js';
 import { brand } from './public-renderer.js';
 export const ACCESS = Object.freeze({
-  login: { title: 'Welcome back.', subtitle: 'Sign in with your existing barangay staff account.', button: 'Sign in', fields: [['email', 'Email address', 'email'], ['password', 'Password', 'password']] },
+  login: { title: 'Welcome.', subtitle: 'Sign in with your existing barangay staff account.', button: 'Sign in', fields: [['email', 'Email address', 'email'], ['password', 'Password', 'password']] },
   signup: { title: 'Serve your community.', subtitle: 'Apply for Content Admin access. System Admin approval is required.', button: 'Submit application', fields: [['displayName', 'Full name (as registered)', 'text'], ['email', 'Email address', 'email'], ['position', 'Role / position (optional)', 'text'], ['reason', 'Reason for applying (optional)', 'text'], ['password', 'Password (at least 8 characters)', 'password'], ['confirmation', 'Confirm password', 'password']] },
   activation: { title: 'Activate your access.', subtitle: 'For approved Content Admin accounts with a valid invitation session only.', button: 'Set password & activate', fields: [['password', 'New password (at least 8 characters)', 'password'], ['confirmation', 'Confirm new password', 'password']] },
 });
+
+/** Reuse Dashboard Cover 1 as a decorative login banner; no second image record is created. */
+export function applyAccessCover(root, cover) {
+  const aside = root?.querySelector?.('.access-aside');
+  if (!aside) return false;
+  aside.querySelector('.access-cover-media')?.remove();
+  let url;
+  try { url = new URL(cover?.url); } catch { aside.classList.remove('has-cover'); return false; }
+  if (url.protocol !== 'https:') { aside.classList.remove('has-cover'); return false; }
+  const media = el('div', '', { class: 'access-cover-media', 'aria-hidden': 'true' });
+  media.append(el('img', '', { src: url.href, alt: '' }));
+  aside.prepend(media); aside.classList.add('has-cover');
+  return true;
+}
 
 /** Preview uses actual fields but never accepts credentials or submits a form. */
 export function accessSurface(mode, settings = {}, { preview = false } = {}) {

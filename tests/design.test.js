@@ -19,8 +19,8 @@ function fixture(result = { data: { id: 1, design_theme: null }, error: null }) 
     for (const name of ['select', 'eq', 'is', 'ilike', 'order', 'range', 'update', 'single', 'maybeSingle']) query[name] = (...args) => { steps.push([name, ...args]); return query; };
     query.then = (resolve, reject) => Promise.resolve(result).then(resolve, reject);
     return query;
-  } };
-  const auth = { requireStaff: async roles => { log.push({ roles }); } };
+  }, rpc: async (name, args) => { log.push({ rpc: name, args }); return result; } };
+  const auth = { requireStaff: async roles => { log.push({ roles }); }, requirePermission: async permission => { log.push({ permission }); } };
   return { client, auth, log };
 }
 
@@ -125,26 +125,26 @@ test('missing settings singleton cannot become a fabricated published design', (
   assert.throws(() => designSnapshot(null), /not found/);
   assert.throws(() => designSnapshot({ id: 2 }), /not found/);
 });
-test('publish is admin-only and patches only design_theme, preserving legacy data', async () => {
+test('publish uses the protected namespace RPC and preserves legacy data', async () => {
   const row = { id: 1, design_theme: { legacy: 'keep', brgyweblitev3_covers: { version: 1, slides: [] } } };
-  const { client, auth, log } = fixture({ data: row, error: null });
+  const { client, auth, log } = fixture({ data: [row], error: null });
   await createDesign(client, auth).publish({ ...presetDesign('national-authority'), secondary: '#abcdef' }, designSnapshot(row));
-  assert.deepEqual(log[0], { roles: ['admin'] });
-  const query = log[1]; assert.equal(query.table, 'site_settings');
-  const update = query.steps.find(step => step[0] === 'update')[1];
-  assert.deepEqual(Object.keys(update), ['design_theme']); assert.equal(update.design_theme.legacy, 'keep');
-  assert.equal(update.design_theme.brgyweblitev3.preset, 'national-authority');
-  assert.equal(update.design_theme.brgyweblitev3.secondary, '#abcdef');
-  assert.deepEqual(update.design_theme.brgyweblitev3_covers, row.design_theme.brgyweblitev3_covers);
-  assert.ok(query.steps.some(step => step[0] === 'eq' && step[1] === 'design_theme' && step[2] === JSON.stringify(row.design_theme)));
+  assert.deepEqual(log[0], { permission: 'design_studio' });
+  const call = log[1]; assert.equal(call.rpc, 'staff_update_design_namespace');
+  assert.equal(call.args.p_permission, 'design_studio'); assert.equal(call.args.p_namespace, 'brgyweblitev3');
+  assert.equal(call.args.p_next.legacy, 'keep');
+  assert.equal(call.args.p_next.brgyweblitev3.preset, 'national-authority');
+  assert.equal(call.args.p_next.brgyweblitev3.secondary, '#abcdef');
+  assert.deepEqual(call.args.p_next.brgyweblitev3_covers, row.design_theme.brgyweblitev3_covers);
 });
-test('initial null theme uses IS NULL atomic comparison, never equality with null', async () => {
-  const { client, auth, log } = fixture(); await createDesign(client, auth).publish(presetDesign(), designSnapshot({ id: 1, design_theme: null }));
-  assert.ok(log[1].steps.some(step => step[0] === 'is' && step[1] === 'design_theme' && step[2] === null));
+test('initial null theme is passed as the atomic RPC baseline', async () => {
+  const row = { id: 1, design_theme: null };
+  const { client, auth, log } = fixture({ data: [row], error: null }); await createDesign(client, auth).publish(presetDesign(), designSnapshot(row));
+  assert.equal(log[1].args.p_expected, null);
 });
 test('denied account never reaches a theme query', async () => {
   const { client, log } = fixture();
-  await assert.rejects(createDesign(client, { requireStaff: async () => { throw new Error('denied'); } }).publish(presetDesign(), { id: 1, raw: null }), /denied/);
+  await assert.rejects(createDesign(client, { requirePermission: async () => { throw new Error('denied'); } }).publish(presetDesign(), { id: 1, raw: null }), /denied/);
   assert.equal(log.length, 0);
 });
 test('zero-row write is a conflict, not false publish success', async () => {

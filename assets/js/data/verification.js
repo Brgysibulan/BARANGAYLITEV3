@@ -33,9 +33,9 @@ export function createVerification(client, auth) {
     const rows = unwrap(await client.rpc('verify_barangay_record_qr', { p_token: token }));
     return rows?.[0] || null;
   }
-  /** Private records require System Admin access and bounded pagination. */
+  /** Private records require the exact protected permission and bounded pagination. */
   async function list({ page = 0, pageSize = 50, search = '', status = 'all' } = {}) {
-    await auth.requireStaff(['admin']);
+    await auth.requirePermission('verification');
     if (!Number.isInteger(page) || page < 0 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 100) throw new Error('Invalid pagination.');
     if (typeof search !== 'string' || search.length > 100) throw new Error('Search must be at most 100 characters.');
     if (!['all', 'ACTIVE', 'INACTIVE', 'EXPIRED'].includes(status)) throw new Error('Invalid status filter.');
@@ -47,7 +47,7 @@ export function createVerification(client, auth) {
   }
   /** Update only editable ID details; the token and database ID are never in the payload. */
   async function save(values, id = null) {
-    await auth.requireStaff(['admin']);
+    await auth.requirePermission('verification');
     // qr_token is database-owned. Editing an ID must not invalidate printed QR codes.
     const payload = pickFields(values, VERIFICATION_FIELDS);
     for (const key of ['date_acquired', 'expiration_date']) if (payload[key] && (!/^\d{4}-\d{2}-\d{2}$/.test(payload[key]) || Number.isNaN(Date.parse(payload[key])))) throw new Error('Use a valid date.');
@@ -59,13 +59,13 @@ export function createVerification(client, auth) {
   }
   /** Explicit admin deletion; the UI must confirm the exact record before calling. */
   async function remove(id) {
-    await auth.requireStaff(['admin']);
+    await auth.requirePermission('verification');
     if (id === null || id === undefined || id === '') throw new Error('Record ID required.');
     return unwrap(await client.from('verification_records').delete().eq('id', id).select('id').single());
   }
   /** Aggregate only status/dates; no resident names are downloaded for dashboard analysis. */
   async function overview() {
-    await auth.requireStaff(['admin']);
+    await auth.requirePermission('verification');
     const { verificationDate } = await import('./id-model.js');
     const today = verificationDate();
     const soon = new Date(today + 'T00:00:00Z'); soon.setUTCDate(soon.getUTCDate() + 30);

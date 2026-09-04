@@ -34,6 +34,23 @@ export function createAuth(client) {
     return staff;
   }
 
+  /** Resolve delegated navigation access; protected tables/RPCs still enforce the same grant server-side. */
+  async function requirePermission(permission) {
+    const allowed = ['verification', 'covers', 'design_studio', 'page_settings', 'public_visibility', 'system_usage'];
+    if (!allowed.includes(permission)) throw new Error('Unsupported staff permission.');
+    const staff = await requireStaff();
+    if (staff.profile.role === 'admin') return staff;
+    const grant = unwrap(await client.from('staff_delegated_permissions')
+      .select('permission_key,is_enabled,expires_at')
+      .eq('target_user_id', staff.user.id).eq('permission_key', permission).maybeSingle());
+    if (!grant || grant.is_enabled !== true || (grant.expires_at && new Date(grant.expires_at) <= new Date())) {
+      const error = new Error('This temporary module access is off or expired. Ask the System Admin to enable it.');
+      error.code = 'MODULE_ACCESS_REQUIRED';
+      throw error;
+    }
+    return staff;
+  }
+
   /** Authenticate the existing user; this never creates accounts or resets passwords. */
   async function signIn(email, password) {
     // Do not trim or otherwise change a user's existing password.
@@ -52,5 +69,5 @@ export function createAuth(client) {
     unwrap(await client.auth.signOut({ scope: 'local' }));
   }
 
-  return Object.freeze({ currentStaff, requireStaff, signIn, signOut });
+  return Object.freeze({ currentStaff, requireStaff, requirePermission, signIn, signOut });
 }

@@ -13,14 +13,18 @@ export function createSettings(client, auth) {
   }
   /** Patch the existing singleton; never replace the entire settings record. */
   async function update(values) {
-    await auth.requireStaff(['admin']);
+    await auth.requirePermission('page_settings');
     const payload = validatePayload(pickFields(values, SETTINGS_FIELDS));
     if (!Object.keys(payload).length) throw new Error('No supported settings to save.');
     for (const key of ['barangay_name', 'hero_title']) {
       if (Object.hasOwn(payload, key) && !String(payload[key] || '').trim()) throw new Error(`${key} is required.`);
     }
-    // Never overwrite design_theme, primary_color, secondary_color or accent_color.
-    return unwrap(await client.from('site_settings').update(payload).eq('id', 1).select(SETTINGS_SELECT).single());
+    // The RPC permits an active System Admin or a non-expired Page Settings grant,
+    // and it never accepts design_theme, primary_color or other unrelated columns.
+    const rows = unwrap(await client.rpc('staff_update_site_settings', { p_patch: payload }));
+    const row = Array.isArray(rows) ? rows[0] : rows;
+    if (!row) throw new Error('Settings change was not confirmed. Reload before retrying.');
+    return row;
   }
   /** Reuse legacy profile slugs so the new UI finds the same existing content. */
   async function readProfile({ publicOnly = false } = {}) {

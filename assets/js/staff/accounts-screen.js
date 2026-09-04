@@ -6,6 +6,7 @@
 import { element as el } from '../core/dom.js';
 import { heading, button, badge, recordTable, dateText } from './ui.js';
 import { PUBLIC_SITE } from '../data/id-model.js';
+import { DELEGATED_MODULES, permissionEnabled } from '../data/permissions.js';
 
 export function mountAccounts(root, services, isCurrent) {
   let disposed = false, dialog = null, busy = false;
@@ -15,7 +16,7 @@ export function mountAccounts(root, services, isCurrent) {
 
   // Standalone invitations were intentionally removed. New Content Admins must apply first,
   // then the System Admin can approve the application from the list below.
-  heading(root, 'Content Admin accounts', 'Review access requests and manage content permissions. Your existing System Admin account is unchanged.');
+  heading(root, 'Content Admin accounts', 'Review access requests and grant selected System Admin modules to each Content Admin individually. Your System Admin account is unchanged.');
   root.append(status, slot);
 
   function closeDialog() {
@@ -95,9 +96,63 @@ export function mountAccounts(root, services, isCurrent) {
     emailInput?.focus();
   }
 
+  /** Every delegated module has its own Save button so one change cannot overwrite another. */
+  function manageModuleAccess(account, savedRows) {
+    if (busy || dialog) return;
+    const accountId = account.user_id || account.id;
+    const modal = el('dialog', '', { class: 'edit-dialog permission-dialog', 'aria-label': `Module access for ${account.display_name || account.email}` });
+    const message = el('p', '', { role: 'status', 'aria-live': 'polite', class: 'form-message' });
+    const list = el('div', '', { class: 'permission-grid' });
+    const close = button('Close', () => { if (!busy) closeDialog(); }, true);
+    modal.append(el('div', '', { class: 'dialog-heading' }));
+    modal.querySelector('.dialog-heading').append(el('h2', account.display_name || account.email));
+    modal.append(el('p', 'Enable only the protected modules this Content Admin needs. Expired access turns off automatically; database RLS and RPC checks enforce every action.', { class: 'muted' }), message, list);
+
+    DELEGATED_MODULES.forEach(def => {
+      let saved = savedRows.find(row => row.permission_key === def.key) || null;
+      const card = el('section', '', { class: 'permission-card' });
+      const title = el('div'); title.append(el('h3', def.label), el('p', def.description, { class: 'muted compact' }));
+      const toggleLabel = el('label', '', { class: 'visibility-switch', title: `Enable ${def.label}` });
+      const toggle = el('input', '', { type: 'checkbox', 'aria-label': `Enable ${def.label}` });
+      toggle.checked = permissionEnabled(saved);
+      toggleLabel.append(toggle, el('span', '', { 'aria-hidden': 'true' }));
+      const top = el('div', '', { class: 'permission-card-top' }); top.append(title, toggleLabel);
+      const expiryField = el('div', '', { class: 'field' });
+      const expiryId = `permission-${accountId}-${def.key}`;
+      const expiry = el('select', '', { id: expiryId, 'aria-label': `${def.label} access duration` });
+      [['1', '24 hours'], ['7', '7 days'], ['30', '30 days'], ['none', 'No expiry']].forEach(([value, label]) => expiry.append(el('option', label, { value })));
+      if (saved?.is_enabled && !saved.expires_at) expiry.value = 'none';
+      else if (saved?.expires_at) {
+        const days = Math.max(1, Math.ceil((new Date(saved.expires_at) - new Date()) / 86400000));
+        expiry.value = days <= 1 ? '1' : days <= 7 ? '7' : '30';
+      } else expiry.value = '7';
+      expiry.disabled = !toggle.checked;
+      toggle.addEventListener('change', () => { expiry.disabled = !toggle.checked; });
+      expiryField.append(el('label', 'Access duration', { for: expiryId }), expiry);
+      const state = el('span', toggle.checked ? (saved?.expires_at ? `On until ${dateText(saved.expires_at)}` : 'On · no expiry') : 'Off', { class: `status-badge ${toggle.checked ? 'good' : ''}` });
+      const save = button('Save this module', async () => {
+        if (busy) return;
+        busy = true; save.disabled = toggle.disabled = expiry.disabled = true; message.textContent = `Saving ${def.label}…`;
+        try {
+          const expiresAt = toggle.checked && expiry.value !== 'none' ? new Date(Date.now() + Number(expiry.value) * 86400000).toISOString() : null;
+          saved = await services.permissions.save(accountId, def.key, toggle.checked, expiresAt);
+          state.textContent = permissionEnabled(saved) ? (saved.expires_at ? `On until ${dateText(saved.expires_at)}` : 'On · no expiry') : 'Off';
+          state.className = `status-badge ${permissionEnabled(saved) ? 'good' : ''}`;
+          message.textContent = `${def.label} access saved for ${account.display_name || account.email}.`;
+        } catch (error) { message.textContent = error.message; message.setAttribute('role', 'alert'); }
+        finally { busy = false; save.disabled = toggle.disabled = false; expiry.disabled = !toggle.checked; }
+      }, true);
+      const actions = el('div', '', { class: 'permission-card-actions' }); actions.append(expiryField, state, save);
+      card.append(top, actions); list.append(card);
+    });
+    const actions = el('div', '', { class: 'form-actions' }); actions.append(close); modal.append(actions);
+    modal.addEventListener('cancel', event => { event.preventDefault(); if (!busy) closeDialog(); });
+    document.body.append(modal); dialog = modal; modal.showModal();
+  }
+
   async function load() {
     try {
-      const data = await services.editors.list();
+      const [data, permissions] = await Promise.all([services.editors.list(), services.permissions.list()]);
       if (disposed || !isCurrent()) return;
       slot.replaceChildren();
 
@@ -109,6 +164,7 @@ export function mountAccounts(root, services, isCurrent) {
           { key: 'email' },
           { key: 'is_active', label: 'Access', render: row => badge(row.is_active ? 'Active' : 'Disabled', row.is_active ? 'good' : 'warning') },
         ], row => [
+          button('Module access', () => manageModuleAccess(row, permissions.filter(grant => grant.target_user_id === (row.user_id || row.id)))),
           button(row.is_active ? 'Disable' : 'Enable', () => confirmAction({
             title: row.is_active ? 'Disable Content Admin' : 'Enable Content Admin',
             description: `${row.is_active ? 'Disable' : 'Enable'} access for ${row.email}?`,

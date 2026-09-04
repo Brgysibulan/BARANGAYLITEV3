@@ -15,7 +15,7 @@ const GROUPS = [
   { title: 'Public homepage', keys: ['hero_title', 'hero_text'] },
   { title: 'Contact & location', keys: ['address', 'contact_number', 'email', 'facebook_url', 'map_embed_url'] },
 ];
-/** Settings stay admin-only, reuse the singleton, and patch only edited fields. */
+/** Settings require the exact protected permission, reuse the singleton, and patch only edited fields. */
 export function mountSettings(root, services, isCurrent) {
   let disposed = false, dialog, busy = false, loadSequence = 0;
   const active = () => !disposed && isCurrent();
@@ -33,7 +33,7 @@ export function mountSettings(root, services, isCurrent) {
         // Existing notice columns may be NOT NULL; blank copy means the shared fallback.
         for (const key of ['maintenance_title', 'maintenance_message']) if (Object.hasOwn(values, key) && !values[key]) values[key] = MAINTENANCE_DEFAULTS[key];
         let uploaded;
-        if (file) { uploaded = await services.storage.upload('branding-media', await optimizeImage(file, { maxSide: 512, target: 120 * 1024 })); values.logo_url = uploaded.url; }
+        if (file) { uploaded = await services.storage.upload('branding-media', await optimizeImage(file, { maxSide: 512, target: 120 * 1024 }), { permission: 'page_settings' }); values.logo_url = uploaded.url; }
         const changed = Object.fromEntries(Object.entries(values).filter(([key, value]) => value !== (settings[key] ?? null)));
         if (!Object.keys(changed).length) return settings;
         try { return await services.settings.update(changed); } catch (error) { if (uploaded) { error.retainedUpload = uploaded; error.message += ' Logo retained; copy its URL before retrying.'; } throw error; }
@@ -142,7 +142,7 @@ export function mountCovers(root, services, isCurrent) {
     if (!confirmed || disposed || !isCurrent()) return;
     setBusy(true); message.textContent = 'Compressing and saving cover photos…';
     try {
-      for (const slide of slides) if (slide.file) { const image = await optimizeImage(slide.file); const uploaded = await services.storage.upload('branding-media', image); slide.url = uploaded.url; delete slide.file; }
+      for (const slide of slides) if (slide.file) { const image = await optimizeImage(slide.file); const uploaded = await services.storage.upload('branding-media', image, { permission: 'covers' }); slide.url = uploaded.url; delete slide.file; }
       const saved = await services.covers.save(slides, baseline); if (disposed || !isCurrent()) return;
       baseline = saved; slides = saved.slides; dirty = false; message.textContent = 'Cover photos published. Previous files were retained because they may still be linked elsewhere.';
       temporary.forEach(url => URL.revokeObjectURL(url)); temporary.clear();

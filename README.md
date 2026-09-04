@@ -4,17 +4,19 @@ Logic-first continuation of `Brgysibulan/BRGYWEB-LITE`, using the **same existin
 
 ## Current stage
 
-The redesigned staff workspace now supports editable public content, real dashboard aggregates, ID records and downloadable QR files, up to five compressed homepage covers, site settings, Content Admin management, and measured file-storage/GitHub status. The shared Design Studio provides eight government layouts plus validated typography, spacing, surface, navigation, card, header, and hero-photo controls with confirmed admin-only publishing. Existing System Admin credentials and the original verification rules are unchanged.
+The redesigned staff workspace now supports editable public content, real dashboard aggregates, ID records and downloadable QR files, up to five compressed homepage covers, site settings, Content Admin management, measured file-storage/GitHub status, and separated activity analytics. The shared Design Studio provides eight government layouts plus validated typography, spacing, surface, navigation, card, header, and hero-photo controls. A System Admin can temporarily delegate selected protected modules to one Content Admin at a time without changing that account's role. Existing System Admin credentials and the original verification rules are unchanged.
 
 Design Studio includes main, secondary, and accent color pickers with matching hex inputs. Its hero layer follows the chosen main or secondary color, offers controlled photo visibility/treatment/position, and previews the same existing Dashboard cover without copying its record. The secondary color controls supporting panels while preserving older saved palettes. The authored interface is fully English; stored barangay content is not translated or modified.
 
-Live Page Settings is `admin/index.html#settings` (existing System Admin access required), not the sample Design Studio iframe. Maintenance has dedicated enable/disable, notice editing, and preview controls. The existing flag pauses public pages and ID verification, including open tabs after the next availability check, while keeping the Admin Portal and authenticated dashboards accessible. No backend permissions or live maintenance state are changed by this release.
+Live Page Settings is `admin/index.html#settings`, not the sample Design Studio iframe. It is always available to System Admins and is shown to a Content Admin only while that individual has a valid `page_settings` grant. Maintenance has dedicated enable/disable, notice editing, and preview controls. The existing flag pauses public pages and ID verification, including open tabs after the next availability check, while keeping the Admin Portal and authenticated dashboards accessible. Loading or testing the frontend does not alter any live grant or maintenance value.
+
+The Admin Portal login says **Welcome** and uses the first saved homepage cover as its background, with a transparent readability overlay. It reads the existing Cover 1 URL instead of uploading or copying another image.
 
 Public service pages are informational and do not collect online payments; any required transaction is completed directly at the Barangay Hall with an official receipt.
 
 The public navigation is organized as Home, News & Updates, Services, About, Directory, and Admin Portal. Barangay Staff and Barangay Functionaries reuse published `directory_entries`; the category determines the public group. The existing Directory Records CRUD accepts a photo or image icon, while records without one receive a neutral public profile icon. No directory table, bucket, or account flow is duplicated.
 
-Public verification is at `verify.html`. Manual lookup requires ID number plus last name, as in the original website. QR codes use the existing record token and the permanent GitHub Pages address. No new backend/schema/RLS changes were deployed for this update. Billing, quota, bandwidth and database disk size are explicitly unavailable until a separately authorized provider integration exists.
+Public verification is at `verify.html`. Manual lookup requires ID number plus last name, as in the original website. QR codes use the existing record token and the permanent GitHub Pages address. Public analytics stores only approved aggregate counters, never visitor identity, search text, ID numbers, last names, or QR tokens. Billing, quota, bandwidth and database disk size are explicitly unavailable until a separately authorized provider integration exists.
 
 Writes run only after an explicit staff action. The application/activation screens reuse existing eligibility and role guards. All CSS remains in the central design system. Pinned local QR assets can be refreshed with `npm run vendor`; no external QR generation service receives ID tokens. See [Design Studio documentation](docs/DESIGN-STUDIO.md) and [debugging map](docs/DEBUGGING.md).
 
@@ -22,9 +24,9 @@ Writes run only after an explicit staff action. The application/activation scree
 
 - Supabase: `pkvorwvkqjnbgktkgjhr` (`BRGYWEB-LITE`), **not WebSaaS**.
 - Auth: existing `auth.users` and active roles in `public.profiles`.
-- All 12 existing public tables retain their schema, data, IDs, and RLS.
+- Existing public-content tables retain their schema, data, IDs, and RLS. The frontend also uses the already-deployed delegated-permission and activity tables/functions.
 - Existing QR tokens, file URLs, and 4 Storage buckets are unchanged.
-- The deployed `manage-editors` Edge Function and 3 existing RPCs are reused.
+- The deployed `manage-editors` Edge Function and protected RPCs are reused; browser code never receives a service-role key.
 - The V3 design is saved only under `site_settings.design_theme.brgyweblitev3`; legacy JSON keys and color columns are preserved. No legacy CSS is executed.
 - V3 has a separate browser-session storage key. The same account can sign in, but old-site session tokens are not copied, cleared, or overwritten.
 
@@ -39,7 +41,7 @@ editor/index.html             Content Admin shell
 login.html                    Existing Admin Portal login
 assets/js/core/               Client, verified roles, service composition, routing
 assets/js/data/               Presentation-independent data operations
-assets/js/staff/              Read-only staff workspace
+assets/js/staff/              Staff workspace screens and guarded actions
 assets/js/design/             Shared layouts, live design runtime, and isolated previews
 assets/css/design-system.css  All CSS and responsive layout rules
 design-studio.html            Public sample playground (no publishing)

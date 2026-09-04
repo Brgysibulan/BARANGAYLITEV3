@@ -28,7 +28,7 @@ export function verificationResult(record) {
 }
 
 /** Scanner lifetime is tied to the page; hidden/closed pages release the camera immediately. */
-export function mountVerification(root, service, { checkAvailability = async () => true } = {}) {
+export function mountVerification(root, service, { checkAvailability = async () => true, recordMetric = () => {} } = {}) {
   let scanner, Scanner, disposed = false, generation = 0, cameraGeneration = 0;
   const manual = el('form', '', { class: 'verification-form' });
   const number = el('input', '', { id: 'id-number', name: 'control_number', required: '', minlength: 4, maxlength: 40, pattern: '[A-Za-z0-9-]+', autocomplete: 'off', placeholder: 'Enter the printed ID number' });
@@ -47,19 +47,25 @@ export function mountVerification(root, service, { checkAvailability = async () 
   const result = el('div', '', { class: 'verification-output', role: 'status', 'aria-live': 'polite' }); root.append(columns, result);
   function stopCamera() { cameraGeneration++; scanner?.destroy(); scanner = undefined; video.srcObject?.getTracks().forEach(track => track.stop()); video.srcObject = null; video.hidden = true; start.disabled = false; stop.disabled = true; scanStatus.textContent = 'Camera is off.'; }
   async function getScanner() { if (!Scanner) Scanner = (await import('../../vendor/qr-scanner.min.js')).default; return Scanner; }
-  async function lookup(operation) {
+  async function lookup(operation, kind) {
     if (disposed) return;
     const request = ++generation; stopCamera(); result.replaceChildren(el('p', 'Checking the existing ID record…', { class: 'notice' })); submit.disabled = true;
     try {
       // A maintenance change disposes this form before any new public lookup is sent.
       if (!await checkAvailability() || disposed || request !== generation) return;
-      const record = await operation(); if (!disposed && request === generation) result.replaceChildren(verificationResult(record));
+      const record = await operation();
+      if (!disposed && request === generation) {
+        result.replaceChildren(verificationResult(record));
+        // Only the lookup type and match/no-match outcome are counted. ID numbers,
+        // names, QR tokens, and device details never enter analytics.
+        Promise.resolve(recordMetric(`verify.${kind}.${record ? 'match' : 'no_match'}`)).catch(() => {});
+      }
     }
     catch (error) { if (!disposed && request === generation) result.replaceChildren(el('p', 'Verification unavailable: ' + error.message, { class: 'notice' })); }
     finally { if (!disposed && request === generation) submit.disabled = false; }
   }
-  function scanned(value) { const token = extractQrToken(value); if (!token) { scanStatus.textContent = 'This is not a supported barangay ID QR. Try the printed ID code.'; return; } lookup(() => service.verifyQr(token)); }
-  manual.addEventListener('submit', event => { event.preventDefault(); const control = number.value, surname = lastName.value; lookup(() => service.verifyManual(control, surname)); });
+  function scanned(value) { const token = extractQrToken(value); if (!token) { scanStatus.textContent = 'This is not a supported barangay ID QR. Try the printed ID code.'; return; } lookup(() => service.verifyQr(token), 'qr'); }
+  manual.addEventListener('submit', event => { event.preventDefault(); const control = number.value, surname = lastName.value; lookup(() => service.verifyManual(control, surname), 'manual'); });
   start.addEventListener('click', async () => {
     const attempt = ++cameraGeneration; start.disabled = true; stop.disabled = false; scanStatus.textContent = 'Starting camera…';
     try {
@@ -82,7 +88,7 @@ export function mountVerification(root, service, { checkAvailability = async () 
   });
   const visibility = () => { if (document.hidden) stopCamera(); }; document.addEventListener('visibilitychange', visibility);
   const cleanup = () => { disposed = true; generation++; stopCamera(); document.removeEventListener('visibilitychange', visibility); };
-  cleanup.verifyToken = value => lookup(() => service.verifyQr(value)); return cleanup;
+  cleanup.verifyToken = value => lookup(() => service.verifyQr(value), 'qr'); return cleanup;
 }
 /** Mount the live page behind availability checks; injected services are used only by tests. */
 export async function startVerificationPage({ services: injectedServices } = {}) {
@@ -95,6 +101,7 @@ export async function startVerificationPage({ services: injectedServices } = {})
   try {
     const services = injectedServices || getServices();
     const visibilityService = services.visibility || { read: async () => ({ config: defaultVisibility() }) };
+    let pageRecorded = false;
     const render = () => {
       if (disposed || !availabilityReady || !visibilityReady) return;
       // Dispose stops the camera and invalidates any outstanding verification result.
@@ -112,7 +119,8 @@ export async function startVerificationPage({ services: injectedServices } = {})
       const header = publicHeader(settings, 'verify', visibility); header.querySelectorAll('a[href^="#"]').forEach(link => { link.href = 'index.html' + link.getAttribute('href'); }); root.append(header);
       const main = el('main', '', { id: 'verification-main', tabindex: '-1', class: 'container verify-main' }); root.append(main);
       main.append(el('p', 'BARANGAY SIBULAN · RECORD VERIFICATION', { class: 'eyebrow muted' }), el('h1', 'Verify a barangay ID'), el('p', 'Check the name, acquisition date, expiration date and current status.', { class: 'muted' }));
-      currentCleanup = mountVerification(main, services.verification, { checkAvailability: async () => {
+      if (!pageRecorded) { pageRecorded = true; services.activity?.recordPublic?.('page.verify').catch(() => {}); }
+      currentCleanup = mountVerification(main, services.verification, { recordMetric: key => services.activity?.recordPublic?.(key), checkAvailability: async () => {
         const [latestSettings, latestVisibility] = await Promise.all([stopAvailability.refresh(), stopVisibility.refresh()]);
         return latestSettings?.maintenance_mode === false && latestVisibility && moduleVisible(latestVisibility, 'verify');
       } });

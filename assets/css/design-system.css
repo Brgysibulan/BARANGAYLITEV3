@@ -268,7 +268,13 @@ small,.muted { color:var(--muted); }
 .workspace-main th { background:var(--canvas); }
 .workspace-main caption { text-align:left; padding:.7rem 0; }
 .access-shell { display:grid; grid-template-columns:1fr 1fr; min-height:100vh; }
-.access-aside { padding:clamp(2rem,6vw,6rem); background:var(--secondary); color:var(--on-secondary); display:flex; flex-direction:column; justify-content:center; }
+.access-aside { position:relative; isolation:isolate; overflow:hidden; padding:clamp(2rem,6vw,6rem); background:var(--secondary); color:var(--on-secondary); display:flex; flex-direction:column; justify-content:center; }
+.access-aside > :not(.access-cover-media) { position:relative; z-index:2; }
+.access-cover-media { position:absolute; inset:0; z-index:0; pointer-events:none; }
+.access-cover-media img { width:100%; height:100%; object-fit:cover; object-position:center; filter:saturate(.82) brightness(.78); }
+.access-cover-media::after { content:""; position:absolute; inset:0; background:linear-gradient(135deg,color-mix(in srgb,var(--hero-color) 88%,transparent),color-mix(in srgb,var(--secondary) 70%,transparent)); backdrop-filter:blur(1px); }
+.access-aside.has-cover { text-shadow:0 2px 16px #0616128f; }
+.access-aside.has-cover .brand-mark { background:#ffffff17; border-color:#ffffffb8; }
 .access-aside h2 { font-size:clamp(2.2rem,4vw,4rem); }
 .access-aside .brand { margin-bottom:4rem; }
 .access-aside .brand small { color:inherit; }
@@ -487,6 +493,24 @@ input[type=checkbox] { width:22px; height:22px; min-height:22px; accent-color:va
 .visibility-switch input:checked + span::after { transform:translateX(22px); }
 .visibility-switch input:focus-visible + span { outline:3px solid #1977ce; outline-offset:3px; }
 .visibility-switch input:disabled + span { opacity:.5; cursor:not-allowed; }
+.permission-dialog { width:min(980px,calc(100% - 28px)); }
+.permission-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1rem; margin-bottom:1rem; }
+.permission-card { display:flex; flex-direction:column; gap:1rem; padding:1rem; border:1px solid var(--line); border-radius:var(--radius); background:var(--canvas); }
+.permission-card h3,.permission-card p { margin-bottom:.35rem; }
+.permission-card-top { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; }
+.permission-card-actions { display:grid; grid-template-columns:minmax(150px,1fr) auto; align-items:end; gap:.75rem; }
+.permission-card-actions .status-badge { align-self:center; }
+.permission-card-actions button { grid-column:1/-1; }
+.activity-controls { display:flex; align-items:end; justify-content:space-between; gap:1rem; margin-bottom:1rem; }
+.activity-tabs { display:flex; flex-wrap:wrap; gap:.5rem; }
+.activity-tabs button[aria-selected=true] { background:var(--primary); color:var(--on-primary); border-color:transparent; }
+.activity-period { min-width:160px; }
+.activity-period label { margin-bottom:.35rem; }
+.activity-description { margin-bottom:1rem; }
+.activity-output { display:grid; gap:1rem; }
+.activity-delete-row { justify-content:flex-end; }
+.activity-deletions { margin-top:1.5rem; }
+.activity-deletions h2 { font-size:1.35rem; }
 .cover-slideshow { position:relative; margin-top:2rem; border-radius:var(--radius); overflow:hidden; background:var(--canvas); }
 .cover-slideshow > img { display:block; width:100%; height:auto; aspect-ratio:16/7; object-fit:cover; }
 .cover-caption { position:absolute; bottom:0; left:0; margin:0; padding:.7rem 1.3rem; color:#fff; background:#102e29d9; max-width:100%; font-size:.9rem; }
@@ -610,6 +634,9 @@ input[type=checkbox] { width:22px; height:22px; min-height:22px; accent-color:va
   .hero.has-cover .hero-cover > img { aspect-ratio:auto; }
   .hero.has-cover .hero-cover .cover-caption { bottom:1rem; max-width:calc(100% - 2rem); }
   .visibility-grid { grid-template-columns:1fr; }
+  .permission-grid { grid-template-columns:1fr; }
+  .activity-controls { align-items:stretch; flex-direction:column; }
+  .activity-period { width:100%; }
 }
 @media(max-width:520px) {
   .metric-grid { gap:.65rem; } .metric-card { padding:1rem; } .metric-value { font-size:1.9rem; }
@@ -652,6 +679,9 @@ input[type=checkbox] { width:22px; height:22px; min-height:22px; accent-color:va
   .visibility-card-top,.visibility-card-actions { gap:.65rem; }
   .visibility-card-actions { align-items:stretch; flex-direction:column; }
   .visibility-card-actions button { width:100%; }
+  .permission-card-actions { grid-template-columns:1fr; }
+  .permission-card-actions button { grid-column:auto; width:100%; }
+  .activity-tabs { display:grid; grid-template-columns:1fr; }
 }
 
 

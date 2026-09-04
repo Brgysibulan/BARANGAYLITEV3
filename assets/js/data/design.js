@@ -17,17 +17,17 @@ export function designSnapshot(row) {
 export function createDesign(client, auth) {
   async function read() { return designSnapshot(unwrap(await client.from('site_settings').select(SELECT).eq('id', 1).single())); }
   async function publish(config, baseline) {
-    await auth.requireStaff(['admin']);
+    await auth.requirePermission('design_studio');
     if (baseline?.id !== 1 || !Object.hasOwn(baseline, 'raw')) throw new Error('Reload the published design before saving.');
     // Unknown future formats must be reviewed, not silently downgraded by an older client.
     const stored = baseline.raw?.[DESIGN_KEY];
     if (stored?.version && stored.version !== 1) throw new Error('This design uses a newer version. Update the website before editing it.');
     const merged = mergeDesign(baseline.raw, config);
-    let query = client.from('site_settings').update({ design_theme: merged }).eq('id', 1);
-    // Postgres JSONB equality is atomic and order-insensitive. NULL requires .is(), not .eq().
-    // This protects legacy keys as well as the V3 design from concurrent admin overwrites.
-    query = baseline.raw === null ? query.is('design_theme', null) : query.eq('design_theme', JSON.stringify(baseline.raw));
-    const row = unwrap(await query.select(SELECT).maybeSingle());
+    // A protected RPC atomically limits delegated writers to the Design Studio namespace.
+    const rows = unwrap(await client.rpc('staff_update_design_namespace', {
+      p_permission: 'design_studio', p_namespace: DESIGN_KEY, p_expected: baseline.raw, p_next: merged,
+    }));
+    const row = Array.isArray(rows) ? rows[0] : rows;
     if (!row) { const error = new Error('The published design changed or access was revoked. Reload the latest design, review your draft, then publish again.'); error.code = 'DESIGN_CONFLICT'; throw error; }
     return designSnapshot(row);
   }

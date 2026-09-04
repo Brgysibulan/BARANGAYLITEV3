@@ -94,16 +94,19 @@ export function createVisibility(client, auth) {
 
   /** Each call reads and patches one control, so there is no whole-page Save overwrite. */
   async function saveChange(change) {
-    await auth.requireStaff(['admin']);
+    await auth.requirePermission('public_visibility');
     const baseline = await read();
     if (baseline.raw !== null && (typeof baseline.raw !== 'object' || Array.isArray(baseline.raw))) throw new Error('Unsupported legacy settings format. Update the website before changing visibility.');
     const nextConfig = normalizeVisibility(baseline.config);
     change(nextConfig);
     const next = { ...(baseline.raw || {}), [VISIBILITY_KEY]: nextConfig };
-    let query = client.from('site_settings').update({ design_theme: next }).eq('id', 1);
-    // Compare the complete JSON so visibility never overwrites a simultaneous cover/design save.
-    query = baseline.raw === null ? query.is('design_theme', null) : query.eq('design_theme', JSON.stringify(baseline.raw));
-    const row = unwrap(await query.select(SELECT).maybeSingle());
+    // Compare and patch through the protected namespace RPC so a delegated editor
+    // cannot change covers, Design Studio values, or any unrelated settings key.
+    const rows = unwrap(await client.rpc('staff_update_design_namespace', {
+      p_permission: 'public_visibility', p_namespace: VISIBILITY_KEY,
+      p_expected: baseline.raw, p_next: next,
+    }));
+    const row = Array.isArray(rows) ? rows[0] : rows;
     if (!row) {
       const error = new Error('Page settings changed in another tab. Reload visibility before saving again.');
       error.code = 'VISIBILITY_CONFLICT';

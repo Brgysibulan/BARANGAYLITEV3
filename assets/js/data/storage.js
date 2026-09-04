@@ -29,20 +29,26 @@ export function ownedObjectPath(bucket, url) {
 }
 
 export function createStorage(client, auth, content) {
-  /** Branding is System Admin-only; other existing content buckets allow active staff. */
-  async function authorize(bucket) {
+  /** Branding requires the exact delegated purpose; other existing buckets allow active staff. */
+  async function authorize(bucket, permission = null) {
     if (!Object.hasOwn(BUCKETS, bucket)) throw new Error('Unsupported storage bucket.');
     const def = BUCKETS[bucket];
-    await auth.requireStaff(def.adminOnly ? ['admin'] : ['admin', 'editor']);
+    if (def.adminOnly) {
+      if (!['covers', 'page_settings'].includes(permission)) throw new Error('Choose an approved branding upload purpose.');
+      await auth.requirePermission(permission);
+    } else await auth.requireStaff(['admin', 'editor']);
     return def;
   }
   /** Validate before uploading, then allocate a fresh path rather than overwriting files. */
-  async function upload(bucket, file) {
-    const def = await authorize(bucket);
+  async function upload(bucket, file, { permission = null } = {}) {
+    const def = await authorize(bucket, permission);
     if (!file || file.size <= 0 || file.size > def.max || !def.types.includes(file.type)) throw new Error('Unsupported file type or file size for this bucket.');
     const extension = (file.name.split('.').pop() || 'file').toLowerCase().replace(/[^a-z0-9]/g, '') || 'file';
     // Unique paths never overwrite an existing logo, document, or image.
-    const path = `${new Date().getFullYear()}/${crypto.randomUUID()}.${extension}`;
+    // Branding RLS limits a delegated editor to their granted folder. Content
+    // buckets retain the existing year-based paths and staff policies.
+    const prefix = bucket === 'branding-media' ? permission : String(new Date().getFullYear());
+    const path = `${prefix}/${crypto.randomUUID()}.${extension}`;
     unwrap(await client.storage.from(bucket).upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type }));
     const url = client.storage.from(bucket).getPublicUrl(path).data?.publicUrl;
     if (!url) throw new Error('Upload succeeded but the public URL is unavailable.');
@@ -50,8 +56,8 @@ export function createStorage(client, auth, content) {
   }
 
   /** Destructive, explicit operation: caller must confirm intent and check other links. */
-  async function removeObject(bucket, url) {
-    await authorize(bucket);
+  async function removeObject(bucket, url, { permission = null } = {}) {
+    await authorize(bucket, permission);
     const path = ownedObjectPath(bucket, url);
     if (!path) throw new Error('Refusing to remove a file outside the existing project/bucket.');
     unwrap(await client.storage.from(bucket).remove([path]));

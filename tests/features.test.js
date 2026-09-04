@@ -20,12 +20,12 @@ test('cover settings enforce five unique HTTPS slides and omit unknown fields', 
   assert.throws(() => validateCovers([{ id: 'x', url: 'https://example.com/a.jpg', alt: '' }]), /description/);
   assert.equal(coverSnapshot({ id: 1, design_theme: { old: true } }).slides.length, 0);
 });
-test('cover saves remain admin-only, merge legacy keys and reject stale baselines', async () => {
+test('cover saves require the exact grant, merge legacy keys and reject stale baselines', async () => {
   const roles = [], writes = []; let result = { id: 1, design_theme: {} };
-  const chain = { update(value) { writes.push(value); return this; }, eq() { return this; }, is() { return this; }, select() { return this; }, maybeSingle: async () => ({ data: result }) };
-  const service = createCovers({ from: () => chain }, { requireStaff: async role => roles.push(role) });
+  const client = { rpc: async (name, args) => { writes.push({ name, args }); return { data: result ? [result = { ...result, design_theme: args.p_next }] : null }; } };
+  const service = createCovers(client, { requirePermission: async role => roles.push(role) });
   await service.save([], { raw: { legacy: true, brgyweblitev3: { version: 1 } } });
-  assert.deepEqual(roles, [['admin']]); assert.equal(writes[0].design_theme.legacy, true); assert.equal(writes[0].design_theme.brgyweblitev3.version, 1);
+  assert.deepEqual(roles, ['covers']); assert.equal(writes[0].args.p_next.legacy, true); assert.equal(writes[0].args.p_next.brgyweblitev3.version, 1);
   result = null; await assert.rejects(service.save([], { raw: null }), /changed/);
 });
 test('ID validity preserves original inclusive expiry and inactive rules', () => {
@@ -45,7 +45,7 @@ test('usage formatting never turns missing values into zero storage', () => {
 test('usage cache still rechecks admin access and sums existing Storage metadata', async () => {
   let authorized = true, requests = 0;
   const service = createUsage({ from: () => ({ select() { return this; }, eq() { return this; }, single: async () => ({ data: { id: 1 } }) }), storage: { from: () => ({ list: async () => ({ data: [{ id: 'object', name: 'photo', metadata: { size: 32 } }] }) }) } },
-    { requireStaff: async roles => { assert.deepEqual(roles, ['admin']); if (!authorized) throw new Error('denied'); } },
+    { requirePermission: async permission => { assert.equal(permission, 'system_usage'); if (!authorized) throw new Error('denied'); } },
     async url => { requests++; return { ok: true, json: async () => url.includes('/deployments') ? [] : { size: 3, pushed_at: null } }; });
   const result = await service.read(); assert.equal(result.supabase.buckets.length, 4); assert.equal(result.supabase.buckets[0].bytes, 32); assert.equal(result.billing, null); assert.equal(result.supabase.database_bytes, null);
   await service.read({ force: true }); assert.equal(requests, 2); authorized = false; await assert.rejects(service.read(), /denied/);

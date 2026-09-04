@@ -10,7 +10,7 @@ This changes display timing only. It does not save designs, add browser-storage 
 
 ## Page Settings and maintenance
 
-The standalone `design-studio.html` and its iframe are a sample appearance preview, not live staff editing. Use **Open live Page Settings** or sign in at `login.html?next=settings`. The existing active System Admin account can edit `admin/index.html#settings`. Content Admins still cannot change system settings; the live profile and existing RLS enforce this.
+The standalone `design-studio.html` and its iframe are a sample appearance preview, not live staff editing. Use **Open live Page Settings** or sign in at `login.html?next=settings`. A System Admin can always edit `admin/index.html#settings`. A Content Admin sees it only while their individual `page_settings` grant is enabled and unexpired; the protected RPC and RLS repeat that check on every save.
 
 - `core/navigation.js` preserves only allowlisted, role-appropriate destinations after login, never arbitrary URLs.
 - `staff/settings-screen.js` has separate confirmed **Enable/Disable maintenance mode**, **Edit maintenance notice**, and write-free **Preview maintenance notice** controls. A toggle updates only `maintenance_mode`; blank notice text cannot block turning maintenance off.
@@ -25,8 +25,8 @@ This preserves the original website-level maintenance contract. It is not a new 
 
 ## Staff editing / ID / cover update
 
-- `data/visibility.js` stores `brgyweblitev3_visibility` inside the existing `site_settings.design_theme` JSON. Every save reads the latest singleton and atomically patches one module or Directory heading, preserving the design, cover slideshow, legacy keys, records, and files. A `VISIBILITY_CONFLICT` means another settings writer changed the JSON first; reload before retrying.
-- `staff/visibility-screen.js` is the System Admin **Public visibility** screen. There is no whole-page Save: every module and every actual Directory category has its own switch and Save button. Turning off the Directory parent hides Officials, Staff, Functionaries, and Contact Directory without overwriting their individual ON/OFF preferences.
+- `data/visibility.js` stores `brgyweblitev3_visibility` inside the existing `site_settings.design_theme` JSON. Every save uses the protected namespace RPC to atomically patch one module or Directory heading while preserving the design, cover slideshow, legacy keys, records, and files. A `VISIBILITY_CONFLICT` means another settings writer changed the JSON first; reload before retrying.
+- `staff/visibility-screen.js` is the protected **Public visibility** screen. There is no whole-page Save: every module and every actual Directory category has its own switch and Save button. Turning off the Directory parent hides Officials, Staff, Functionaries, and Contact Directory without overwriting their individual ON/OFF preferences.
 - `public/visibility.js` rechecks saved visibility on entry, focus, and once per minute. `public/app.js` removes disabled links, Home previews, quick links, footer links, map, and direct routes. Empty Home modules collapse until content is published. A disabled direct route shows an unavailable notice instead of deleting or exposing records.
 - `public/verify.js` requires both normal website availability and `verify` visibility before calling either public RPC. When Verify is OFF, old printed QR links state that verification is temporarily unavailable and do not label the ID invalid.
 - `staff/content-screen.js`: content/ID Create, Read, Update, and Delete from one searchable screen. Directory Records accepts the exact local category heading plus an optional photo/icon upload. Read uses a details dialog; writes remain allowlisted by `data/contracts.js`; deletion uses an in-page confirmation before the existing service/RLS call.
@@ -42,6 +42,21 @@ This preserves the original website-level maintenance contract. It is not a new 
 - `public/photo-viewer.js` opens uploaded Official, Staff, Functionary, and Community Gallery photos in one full-size dialog. Previous/next wraps within the selected photo group, so Gallery images do not mix with personnel images on Home. Keyboard arrows and mobile swipe use the same list. CSS placeholder icons are excluded because only HTTPS image records receive `data-photo-viewer`.
 - `data/usage.js`: existing Storage metadata and public GitHub REST metadata only. No secret key or privileged backend was added.
 
+## Temporary module access
+
+- `data/permissions.js` defines the only delegable modules: ID records & QR, Cover photos, Design Studio, Page settings, Public visibility, and System status & usage.
+- `staff/accounts-screen.js` gives every Content Admin six independent access cards. Each card has its own ON/OFF state, expiry choice, and Save button, so one grant never changes the others.
+- `staff/workspace.js` hides ungranted routes and checks the live grants again before rendering a protected screen. `core/auth.js` also runs `requirePermission()` before protected data operations.
+- Frontend guards improve navigation and errors, but they are not the security boundary. `staff_delegated_permissions`, protected RPCs, table RLS, and branding-folder Storage policies enforce the same permission and expiry server-side.
+- Turning a grant off or letting it expire does not change the Content Admin's base role. Refresh the workspace after a System Admin changes access so navigation reflects the latest server state.
+
+## Activity and analytics
+
+- `staff/activity-screen.js` keeps **Public View**, **Content Admin**, and **System Admin** in separate tabs with Daily, Weekly, Monthly, and Annual Manila-calendar ranges.
+- Public View contains allowlisted aggregate counters only. `data/activity.js` silently rejects unknown metric keys, and public callers never send identity, search text, verification inputs, or tokens.
+- Staff rows come from server-side activity triggers plus explicit login, logout, export, and account-management records. They include the actor role/name, action, module, safe summary, and time.
+- Deleting the selected range requires confirmation and calls a System-Admin-only RPC. The removed activity cannot be restored; a separate `activity_log_deletions` row preserves who deleted which scope/range and how many rows were removed.
+
 When a create/save request fails after upload, close and refresh before retrying to avoid duplicates. Uploaded files are retained when a save outcome is uncertain. Existing files are not automatically deleted because they may have other references. Billing/quota/bandwidth/database size are deliberately unavailable, not zero.
 
 For CSS, five-layout presets, previews, and safe publishing, read the [Design Studio guide](DESIGN-STUDIO.md). The only stylesheet is `assets/css/design-system.css`. New and changed code includes Purpose/dependencies/Debug comments.
@@ -56,6 +71,8 @@ Each JavaScript module starts with Purpose, dependencies, and Debug notes. Safeg
 | Supabase SDK will not load | `assets/js/core/client.js`, HTML script URL | Network/CDN availability and pinned version in `core/config.js` |
 | Login fails | `assets/js/login.js`, `core/auth.js` | Auth response, matching `profiles.user_id`, active status, and required role |
 | Incorrect staff destination/access | `core/auth.js`, `staff/workspace.js` | The live profile is authoritative, not user metadata or a cached role |
+| Delegated module missing or denied | `data/permissions.js`, `staff/accounts-screen.js` | Target user, exact permission key, enabled state, expiry, RLS, and protected RPC |
+| Activity totals or rows look wrong | `data/activity.js`, `staff/activity-screen.js` | Selected Manila period, scope tab, metric allowlist, trigger/RPC permissions, and deletion audit |
 | Missing public content | `data/contracts.js`, `data/content.js` | Table/column names, public flag, pagination, and RLS errors |
 | Incorrect profile/settings | `data/settings.js` | `site_settings.id=1` and existing `barangay-*` slugs, not legacy CSS/theme |
 | Wrong public module visibility | `data/visibility.js`, `staff/visibility-screen.js` | Parent Directory state, individual module/group state, and `VISIBILITY_CONFLICT` |
@@ -72,9 +89,9 @@ Each JavaScript module starts with Purpose, dependencies, and Debug notes. Safeg
 
 1. The HTML shell loads the pinned SDK and entry module.
 2. The entry module obtains services from `core/services.js`.
-3. `core/auth.js` validates the user and current staff profile.
-4. A module in `data/` requests the existing Supabase resources.
-5. Existing RLS/Edge Function rules enforce the actual permissions.
+3. `core/auth.js` validates the user, current staff profile, and any required live delegated grant.
+4. A module in `data/` requests the existing Supabase resources or a protected RPC.
+5. RLS, RPC checks, Storage policies, and the Edge Function enforce the actual permissions.
 6. The public/staff view displays the result or error without changing permissions.
 
 ## Safe checks
@@ -100,5 +117,5 @@ This check is read-only. It does not verify real password login, authenticated w
 - If a request is denied, inspect the actual role and server rules. Never remove RLS or put a service-role key in the browser.
 - If an error includes `retainedUpload`, do not immediately retry or delete. A record may have saved even if the response was lost. Confirm the existing record and file reference first.
 - V3 and the old website share a database. Real saves/deletions affect those shared records.
-- Editing/upload controls require the correct active role. The public Design Studio is preview-only; publishing is available in the authenticated System Admin workspace.
+- Editing/upload controls require the correct active role or a valid per-user delegated grant. The public Design Studio is preview-only; publishing is available only in an authenticated, authorized workspace.
 - Update nearby comments and related tests when behavior changes.

@@ -6,7 +6,7 @@
 import { element as el } from '../core/dom.js';
 import { PRESETS, presetDesign, normalizeDesign, sameDesign } from './model.js';
 
-/** One editor powers the safe public demo and the admin-only publishing workspace. */
+/** One editor powers the safe public demo and the protected publishing workspace. */
 export function mountStudio(root, { snapshot = { config: presetDesign() }, service = null, previewUrl = 'preview.html', previewCovers = [], onPublished = () => {} } = {}) {
   let baseline = snapshot;
   let draft = normalizeDesign(snapshot.config);
@@ -26,7 +26,7 @@ export function mountStudio(root, { snapshot = { config: presetDesign() }, servi
   // Leave live editing outside the sample iframe; the destination retains existing role checks.
   const editingNote = el('div', '', { class: 'notice studio-editing-note' });
   editingNote.append(el('p', 'This area previews appearance. Edit homepage text, contact details, and maintenance mode in the live Page Settings.'), el('a', 'Open live Page Settings →', { href: service ? '#settings' : 'admin/index.html#settings', class: 'button' }));
-  const message = el('p', service ? 'Published design loaded. Changes stay in preview until you publish.' : 'Safe playground · Sample content only. Sign in as System Admin to publish.', { class: 'studio-message', role: 'status', 'aria-live': 'polite' });
+  const message = el('p', service ? 'Published design loaded. Changes stay in preview until you publish.' : 'Safe playground · Sample content only. Sign in to an authorized staff workspace to publish.', { class: 'studio-message', role: 'status', 'aria-live': 'polite' });
   const confirmation = el('div', '', { class: 'confirmation', hidden: true });
   confirmation.append(el('p', 'Publish this design to Public, System Admin, Content Admin, Login, Application, and Activation? Existing accounts and records will not change.'));
   const confirm = el('button', 'Confirm publish', { type: 'button', class: 'primary' });
