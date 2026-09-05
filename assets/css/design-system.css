@@ -116,11 +116,13 @@ small,.muted { color:var(--muted); }
 .official-group-heading h2 { margin:0; }
 .official-group-heading::after { content:""; display:block; width:54px; height:3px; margin:.85rem auto 0; border-radius:99px; background:var(--accent); }
 .official-tier { position:relative; display:grid; justify-content:center; gap:clamp(.65rem,1.3vw,1rem); }
+.official-tier-heading { grid-column:1/-1; margin:0 0:.15rem; color:var(--primary); font-size:.72rem; font-weight:750; letter-spacing:.11em; line-height:1.25; text-align:center; text-transform:uppercase; }
+.official-group-sk .official-tier-heading { color:color-mix(in srgb,var(--primary) 70%,var(--accent)); }
 .official-tier + .official-tier { margin-top:1.8rem; padding-top:1.8rem; }
 .official-tier + .official-tier::before { content:""; position:absolute; top:0; left:50%; width:42px; height:1px; transform:translateX(-50%); background:color-mix(in srgb,var(--primary) 28%,var(--line)); }
 .official-tier-leader { grid-template-columns:repeat(auto-fit,minmax(170px,210px)); }
 .official-tier-leader .official-photo { width:170px; max-width:100%; }
-.official-tier-councilors { grid-template-columns:repeat(7,minmax(0,1fr)); }
+.official-tier-councilors { grid-template-columns:repeat(4,minmax(150px,1fr)); }
 .official-tier-councilors .official-photo { width:118px; max-width:100%; }
 .official-tier-support { grid-template-columns:repeat(3,minmax(145px,190px)); }
 .official-tier-sk-support { grid-template-columns:repeat(2,minmax(145px,190px)); }
@@ -594,7 +596,7 @@ input[type=checkbox] { width:22px; height:22px; min-height:22px; accent-color:va
 .hero.has-cover .hero-cover .cover-caption { z-index:2; }
 
 @media(max-width:1100px) { [data-theme=community-showcase] [data-section=gallery_items] .cards { grid-template-columns:repeat(2,minmax(0,1fr)); } }
-@media(max-width:1100px) { .official-tier-councilors { grid-template-columns:repeat(4,minmax(125px,1fr)); } }
+@media(max-width:1100px) { .official-tier-councilors { grid-template-columns:repeat(3,minmax(125px,1fr)); } }
 @media(max-width:800px) {
   [data-theme=community-showcase] .resident-desk { flex-wrap:wrap; }
   [data-theme=transparency-first] [data-section=disclosures] .cards { grid-template-columns:1fr; }
@@ -678,6 +680,7 @@ input[type=checkbox] { width:22px; height:22px; min-height:22px; accent-color:va
   .officials-roster .official-tier-leader .official-photo { width:100px; }
   .officials-roster .official-card .eyebrow { margin-bottom:.2rem; font-size:.5rem; }
   .officials-roster .official-card h3 { font-size:.72rem; line-height:1.25; }
+  .officials-roster .official-tier-heading { margin-bottom:.05rem; font-size:.58rem; }
   .officials-roster .official-tier-support { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .officials-roster .official-tier-support > :last-child:nth-child(odd) { max-width:145px; }
   .officials-roster .official-tier-sk-support { grid-template-columns:repeat(2,minmax(0,1fr)); }
