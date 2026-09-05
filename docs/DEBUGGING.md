@@ -120,3 +120,11 @@ This check is read-only. It does not verify real password login, authenticated w
 - V3 and the old website share a database. Real saves/deletions affect those shared records.
 - Editing/upload controls require the correct active role or a valid per-user delegated grant. The public Design Studio is preview-only; publishing is available only in an authenticated, authorized workspace.
 - Update nearby comments and related tests when behavior changes.
+
+
+
+## Independent Design Studio saves
+
+`assets/js/design/studio.js` owns five sections: layout, colors/typography, hero, components, and officials. Each Save copies only that section's explicit keys onto the last published baseline and calls the existing authenticated publish service. Other edits stay in the draft. Undo restores only that section; Save all retains confirmation. Preset selection changes only page structure, keeping section edits intact. The reset button still resets the entire preview. A failed save keeps the draft; Reload published is available for conflicts. No schema or permission changes are required.
+
+Officials tiers use wrapping flex rows in `assets/css/design-system.css`: headings occupy a full line and actual cards center in every row, including one leader and incomplete council rows. Layout choices retain four, three, or five desktop columns and two phone columns.

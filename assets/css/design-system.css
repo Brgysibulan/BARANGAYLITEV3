@@ -116,7 +116,7 @@ small,.muted { color:var(--muted); }
 .official-group-heading h2 { margin:0; }
 .official-group-heading::after { content:""; display:block; width:54px; height:3px; margin:.85rem auto 0; border-radius:99px; background:var(--accent); }
 .official-tier { position:relative; display:grid; justify-content:center; gap:clamp(.65rem,1.3vw,1rem); }
-.official-tier-heading { grid-column:1/-1; margin:0 0:.15rem; color:var(--primary); font-size:.72rem; font-weight:750; letter-spacing:.11em; line-height:1.25; text-align:center; text-transform:uppercase; }
+.official-tier-heading { grid-column:1/-1; margin:0 0 .15rem; color:var(--primary); font-size:.72rem; font-weight:750; letter-spacing:.11em; line-height:1.25; text-align:center; text-transform:uppercase; }
 .official-group-sk .official-tier-heading { color:color-mix(in srgb,var(--primary) 70%,var(--accent)); }
 .official-tier + .official-tier { margin-top:1.8rem; padding-top:1.8rem; }
 .official-tier + .official-tier::before { content:""; position:absolute; top:0; left:50%; width:42px; height:1px; transform:translateX(-50%); background:color-mix(in srgb,var(--primary) 28%,var(--line)); }
@@ -720,4 +720,30 @@ input[type=checkbox] { width:22px; height:22px; min-height:22px; accent-color:va
   .photo-viewer-topbar,.photo-viewer-controls { padding:.75rem; }
   .photo-viewer-controls { grid-template-columns:auto 1fr auto; }
   .photo-viewer-previous,.photo-viewer-next { padding:.55rem .7rem; font-size:.78rem; }
+}
+
+
+/* Officials use wrapping rows: the heading occupies its own line, while actual
+   cards center without empty grid tracks. Keep these after mobile grid rules. */
+.officials-roster .official-tier { display:flex; flex-wrap:wrap; justify-content:center; --official-columns:4; --official-gap:clamp(.65rem,1.3vw,1rem); gap:var(--official-gap); }
+.officials-roster .official-tier-heading { flex:0 0 100%; }
+.officials-roster .official-tier > .official-card { flex:0 1 calc((100% - (var(--official-columns) - 1)*var(--official-gap))/var(--official-columns)); min-width:0; max-width:210px; }
+.officials-roster .official-tier-leader > .official-card { flex:0 1 210px; }
+.officials-roster .official-tier-support { --official-columns:3; }
+.officials-roster .official-tier-sk-support { --official-columns:2; }
+[data-officials-layout=pyramid] .officials-roster .official-tier-councilors { --official-columns:3; }
+[data-officials-layout=compact] .officials-roster .official-tier-councilors { --official-columns:5; }
+.studio-section-nav { display:flex; flex-wrap:wrap; gap:.5rem; }
+.studio-section-nav a { padding:.5rem .7rem; border:1px solid #dce1da; border-radius:8px; background:white; font-size:.8rem; text-transform:capitalize; }
+.control-panel { scroll-margin-top:1rem; }
+.control-panel[data-dirty=true] { border-color:#a57416; }
+.section-save-bar { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; border-top:1px solid #dce1da; margin-top:1rem; padding-top:1rem; }
+.section-save-bar span { flex:1 1 100%; font-size:.8rem; color:#46564d; }
+.section-save-bar button { font-size:.8rem; }
+.studio-message { position:sticky; bottom:0; background:#fff; padding:.8rem; border:1px solid #dce1da; border-radius:8px; z-index:2; }
+@media(max-width:1100px) { .officials-roster .official-tier-councilors { --official-columns:3; } }
+@media(max-width:800px) {
+  .officials-roster .official-tier, [data-officials-layout] .officials-roster .official-tier-councilors { --official-columns:2; --official-gap:.55rem; }
+  .officials-roster .official-tier-leader > .official-card { flex-basis:150px; }
+  .studio-section-nav { grid-column:1/-1; }
 }
