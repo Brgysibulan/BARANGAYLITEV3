@@ -136,10 +136,12 @@ test('officials roster follows the Barangay Council and SK hierarchy', () => {
     official('SK Secretary', 'SK Secretary'),
   ]);
   assert.equal(roster.querySelectorAll('.official-group').length, 2);
+  assert.deepEqual([...roster.querySelectorAll('.official-group-barangay .official-tier-heading')].map(node => node.textContent), ['Punong Barangay', 'Barangay Kagawad', 'IPMR, Barangay Secretary, and Barangay Treasurer']);
   assert.match(roster.querySelector('.official-group-barangay .official-tier-leader').textContent, /Punong Barangay/);
   assert.equal(roster.querySelectorAll('.official-group-barangay .official-tier-councilors .official-card').length, 1);
   assert.deepEqual([...roster.querySelectorAll('.official-tier-support .official-card h3')].map(node => node.textContent), ['IPMR', 'Barangay Secretary', 'Barangay Treasurer']);
   assert.match(roster.querySelector('.official-group-sk .official-tier-leader').textContent, /SK Chairperson/);
+  assert.deepEqual([...roster.querySelectorAll('.official-group-sk .official-tier-heading')].map(node => node.textContent), ['SK Chairperson', 'SK Kagawad', 'SK Secretary and SK Treasurer']);
   assert.equal(roster.querySelectorAll('.official-group-sk .official-tier-councilors .official-card').length, 1);
   assert.deepEqual([...roster.querySelectorAll('.official-tier-sk-support .official-card h3')].map(node => node.textContent), ['SK Secretary', 'SK Treasurer']);
 });
