@@ -149,6 +149,9 @@ export function officialsRoster(rows = []) {
   const tier = (name, label, records) => {
     if (!records.length) return null;
     const node = el('div', '', { class: `official-tier official-tier-${name}`, 'aria-label': label });
+    // The label makes the constitutional order readable at a glance; the cards
+    // themselves still come only from the published directory records.
+    node.append(el('h3', label, { class: 'official-tier-heading' }));
     records.forEach(row => node.append(contentCard('officials', row)));
     return node;
   };
