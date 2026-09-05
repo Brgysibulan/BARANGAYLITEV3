@@ -339,3 +339,34 @@ test('public footer has structured navigation and preserves configured barangay 
   assert.match(footer.textContent, /Transparency & reports/);
   assert.ok(fragment.querySelector('.map-section'));
 });
+
+test('section save preserves other drafts and section reset stays isolated', async () => {
+  const saved = [];
+  const fixture = studioFixture({ service: { publish: async config => { saved.push(structuredClone(config)); return { config }; } } });
+  try {
+    const picker = fixture.root.querySelector('#design-primary');
+    picker.value = '#123456'; picker.dispatchEvent(new window.Event('input'));
+    const hero = fixture.root.querySelector('#design-heroHeight');
+    hero.value = 'tall'; hero.dispatchEvent(new window.Event('change'));
+    fixture.click('Save Hero');
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(saved[0].heroHeight, 'tall');
+    assert.equal(saved[0].primary, presetDesign().primary);
+    assert.equal(picker.value, '#123456');
+    fixture.click('Reset Appearance');
+    assert.equal(picker.value, presetDesign().primary);
+    assert.equal(hero.value, 'tall');
+  } finally { fixture.cleanup(); }
+});
+test('failed section save retains the draft for retry', async () => {
+  const fixture = studioFixture({ service: { publish: async () => { throw new Error('Conflict'); } } });
+  try {
+    const hero = fixture.root.querySelector('#design-heroHeight');
+    hero.value = 'tall'; hero.dispatchEvent(new window.Event('change'));
+    fixture.click('Save Hero');
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(hero.value, 'tall');
+    assert.match(fixture.root.querySelector('.studio-message').textContent, /not saved: Conflict/);
+    assert.equal([...fixture.root.querySelectorAll('button')].find(node => node.textContent === 'Save Hero').disabled, false);
+  } finally { fixture.cleanup(); }
+});

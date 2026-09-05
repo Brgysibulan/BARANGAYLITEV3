@@ -1,7 +1,7 @@
 /**
  * Purpose: central layout, color, and typography editor with an isolated draft preview.
  * Depends on: model.js, preview.html, and an optional authenticated design service.
- * Debug: draft stays in memory; only the explicit confirmed Publish action can call save.
+ * Debug: draft stays in memory; section Save or confirmed Publish uses the existing protected service.
  */
 import { element as el } from '../core/dom.js';
 import { PRESETS, presetDesign, normalizeDesign, sameDesign } from './model.js';
@@ -16,7 +16,7 @@ export function mountStudio(root, { snapshot = { config: presetDesign() }, servi
   const channel = crypto.randomUUID();
   const heading = el('div', '', { class: 'studio-heading' });
   const headingCopy = el('div');
-  headingCopy.append(el('p', 'WORKSPACE / APPEARANCE', { class: 'eyebrow muted' }), el('h1', 'Design Studio'), el('p', 'One identity. Every screen. Combine layouts, colors, typography, surfaces, cards, navigation, and hero treatments before publishing.', { class: 'muted' }));
+  headingCopy.append(el('p', 'WORKSPACE / APPEARANCE', { class: 'eyebrow muted' }), el('h1', 'Design Studio'), el('p', 'One identity. Every screen. Edit a section, check the preview, then use its Save button. Other unsaved sections stay in preview.', { class: 'muted' }));
   const actions = el('div', '', { class: 'studio-actions' });
   const revert = el('button', 'Discard changes', { type: 'button' });
   const reload = el('button', 'Reload published', { type: 'button' });
@@ -35,7 +35,7 @@ export function mountStudio(root, { snapshot = { config: presetDesign() }, servi
   const layout = el('div', '', { class: 'studio-layout' });
   const controls = el('div', '', { class: 'studio-controls' });
   const themes = el('section', '', { class: 'control-panel' });
-  themes.append(el('h2', '01 / Choose your layout'), el('p', 'Eight structures, each with independently adjustable visual systems.', { class: 'muted' }));
+  themes.append(el('h2', '01 / Choose your layout'), el('p', 'Choose the page structure. Colors and other settings stay as you set them.', { class: 'muted' }));
   const themeList = el('div', '', { class: 'theme-list' });
   const themeButtons = [];
   for (const [key, def] of Object.entries(PRESETS)) {
@@ -43,7 +43,7 @@ export function mountStudio(root, { snapshot = { config: presetDesign() }, servi
     const glyph = el('span', '', { class: 'layout-glyph', 'data-layout': key, 'aria-hidden': 'true' });
     for (let i = 0; i < 4; i++) glyph.append(el('span'));
     const copy = el('span'); copy.append(el('strong', def.name), el('small', def.description));
-    button.append(glyph, copy); button.addEventListener('click', () => { draft = presetDesign(key); update(); });
+    button.append(glyph, copy); button.addEventListener('click', () => { draft.preset = key; update(); });
     themeButtons.push([key, button]); themeList.append(button);
   }
   themes.append(themeList);
@@ -116,6 +116,40 @@ export function mountStudio(root, { snapshot = { config: presetDesign() }, servi
     ['officialsLayout', 'Officials arrangement', [['rows', 'Leadership rows'], ['pyramid', 'Triangle / pyramid'], ['compact', 'Compact grid']]],
   ].forEach(option => addSelect(componentGrid, ...option));
   components.append(componentGrid);
+  const sections = [
+    [themes, 'Layout', ['preset']],
+    [tokens, 'Appearance', ['primary', 'secondary', 'accent', 'font', 'bodyFont', 'corners', 'sidebar', 'width', 'headerDensity']],
+    [heroControls, 'Hero', ['heroOverlay', 'heroOverlayStyle', 'heroTone', 'heroImage', 'heroFocus', 'heroHeight', 'heroAlign']],
+    [components, 'Components', ['surface', 'cardStyle', 'spacing', 'navStyle', 'footerStyle', 'officialsLayout']],
+  ].map(([panel, label, keys]) => {
+    const bar = el('div', '', { class: 'studio-section-actions' });
+    const status = el('span', '', { role: 'status', 'aria-live': 'polite', class: 'muted' });
+    const save = el('button', `Save ${label}`, { type: 'button', class: 'primary' });
+    const undo = el('button', `Reset ${label}`, { type: 'button' });
+    // Only this section is merged into the published baseline; other draft edits remain local.
+    save.addEventListener('click', async () => {
+      if (!service || busy) return;
+      const next = normalizeDesign(baseline.config);
+      keys.forEach(key => { next[key] = draft[key]; });
+      busy = true; update(); message.textContent = `Saving ${label}…`;
+      try {
+        const saved = await service.publish(next, baseline);
+        if (disposed) return;
+        baseline = saved;
+        keys.forEach(key => { draft[key] = saved.config[key]; });
+        onPublished(saved.config);
+        message.textContent = `${label} saved. Other unsaved sections remain in preview.`;
+      } catch (error) { if (!disposed) message.textContent = `${label} not saved: ${error.message}`; }
+      finally { busy = false; if (!disposed) update(); }
+    });
+    undo.addEventListener('click', () => {
+      const saved = normalizeDesign(baseline.config);
+      keys.forEach(key => { draft[key] = saved[key]; });
+      update(); message.textContent = `${label} restored to its published settings.`;
+    });
+    bar.append(status, undo, save); panel.append(bar);
+    return { keys, save, undo, status };
+  });
   const reset = el('button', 'Reset to Modern LGU default', { type: 'button' });
   reset.addEventListener('click', () => { draft = presetDesign(); update(); message.textContent = 'Default restored in preview only. Publish to make it live.'; });
   tokens.append(reset); controls.append(themes, tokens, heroControls, components);
@@ -143,6 +177,13 @@ export function mountStudio(root, { snapshot = { config: presetDesign() }, servi
     draft = normalizeDesign(draft); confirmation.hidden = true;
     themeButtons.forEach(([key, button]) => { button.setAttribute('aria-pressed', key === draft.preset); button.disabled = busy; });
     for (const [key, { input, value, hex }] of Object.entries(inputs)) { input.value = draft[key]; input.disabled = busy; if (value) value.textContent = draft[key].toUpperCase(); if (hex) { hex.value = draft[key].toUpperCase(); hex.disabled = busy; } }
+    const current = normalizeDesign(baseline.config);
+    sections.forEach(({ keys, save, undo, status }) => {
+      const changed = keys.some(key => draft[key] !== current[key]);
+      save.disabled = !service || busy || !changed;
+      undo.disabled = busy || !changed;
+      status.textContent = changed ? 'Unsaved changes' : 'Matches published';
+    });
     const dirty = !sameDesign(draft, baseline.config);
     publish.disabled = !service || busy || !dirty; revert.disabled = busy || !dirty; reset.disabled = busy; reload.disabled = busy;
     selected.textContent = `${PRESETS[draft.preset].name} · ${dirty ? 'Unpublished draft' : 'Current design'}`;

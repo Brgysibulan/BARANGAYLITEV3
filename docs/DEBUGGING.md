@@ -120,3 +120,9 @@ This check is read-only. It does not verify real password login, authenticated w
 - V3 and the old website share a database. Real saves/deletions affect those shared records.
 - Editing/upload controls require the correct active role or a valid per-user delegated grant. The public Design Studio is preview-only; publishing is available only in an authenticated, authorized workspace.
 - Update nearby comments and related tests when behavior changes.
+
+## Design Studio section saves
+
+`assets/js/design/studio.js` groups Layout, Appearance, Hero, and Components with independent Save/Reset buttons and unsaved indicators. Section saves merge only their keys into the published baseline and reuse the protected design service with its existing conflict check. Other draft edits stay in preview. Layout selection changes structure only; the global default reset still resets the whole draft. Publish Everywhere remains available for an explicitly confirmed full save.
+
+`assets/js/design/public-renderer.js` marks one-record tiers with `official-tier-single`; final rules in `assets/css/design-system.css` center these cards at desktop and mobile widths. Hero controls continue to present the existing Dashboard cover without changing its image record or CRUD.

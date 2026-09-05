@@ -124,8 +124,8 @@ small,.muted { color:var(--muted); }
 .official-tier-leader .official-photo { width:170px; max-width:100%; }
 .official-tier-councilors { grid-template-columns:repeat(4,minmax(150px,1fr)); }
 [data-officials-layout=pyramid] .official-tier-councilors { grid-template-columns:repeat(3,minmax(150px,190px)); }
-[data-officials-layout=pyramid] .official-tier-councilors > :nth-last-child(1):nth-child(3n+1) { grid-column:2; }
-[data-officials-layout=pyramid] .official-tier-councilors > :nth-last-child(2):nth-child(3n+2) { grid-column:1/span 2; justify-self:end; }
+[data-officials-layout=pyramid] .official-tier-councilors:not(.official-tier-single) > :nth-last-child(1):nth-child(3n+2) { grid-column:2; }
+[data-officials-layout=pyramid] .official-tier-councilors:not(.official-tier-single) > :nth-last-child(2):nth-child(3n+2) { grid-column:1/span 2; justify-self:end; }
 [data-officials-layout=compact] .official-tier-councilors { grid-template-columns:repeat(5,minmax(120px,1fr)); }
 .official-tier-councilors .official-photo { width:118px; max-width:100%; }
 .official-tier-support { grid-template-columns:repeat(3,minmax(145px,190px)); }
@@ -720,4 +720,18 @@ input[type=checkbox] { width:22px; height:22px; min-height:22px; accent-color:va
   .photo-viewer-topbar,.photo-viewer-controls { padding:.75rem; }
   .photo-viewer-controls { grid-template-columns:auto 1fr auto; }
   .photo-viewer-previous,.photo-viewer-next { padding:.55rem .7rem; font-size:.78rem; }
+}
+
+/* Keep singleton cards centered despite the tier heading occupying a grid row.
+   This applies after responsive rules so missing officials never leave an empty column. */
+.officials-roster .official-tier-single { grid-template-columns:minmax(0,210px); }
+.officials-roster .official-tier-single > .official-card { grid-column:1; width:100%; justify-self:center; }
+.studio-section-actions { display:flex; flex-wrap:wrap; align-items:center; gap:.6rem; margin-top:1.2rem; padding-top:1rem; border-top:1px solid var(--line); }
+.studio-section-actions > span { flex:1 0 100%; font-size:.8rem; }
+@media(max-width:640px) {
+  .officials-roster .official-tier-single { grid-template-columns:minmax(0,150px); }
+  [data-officials-layout] .official-tier-councilors:not(.official-tier-single) { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  [data-officials-layout] .official-tier-councilors:not(.official-tier-single) > .official-card:nth-child(n) { grid-column:auto; justify-self:stretch; }
+  /* Heading is child one; an even last-child index means an odd card count. */
+  [data-officials-layout] .official-tier-councilors:not(.official-tier-single) > .official-card:last-child:nth-child(even) { grid-column:1/-1; width:100%; max-width:170px; justify-self:center; }
 }
