@@ -39,6 +39,7 @@ export const DESIGN_OPTIONS = Object.freeze({
   heroFocus: Object.freeze(['top', 'center', 'bottom']),
   heroHeight: Object.freeze(['compact', 'standard', 'tall']),
   heroAlign: Object.freeze(['left', 'center']),
+  officialsLayout: Object.freeze(['rows', 'pyramid', 'compact']),
 });
 const validColor = value => typeof value === 'string' && /^#[\da-f]{6}$/i.test(value);
 const choose = (value, allowed, fallback) => allowed.includes(value) ? value : fallback;
@@ -57,6 +58,7 @@ export function presetDesign(preset = DEFAULT_PRESET) {
     heroOverlay: 'strong', heroOverlayStyle: 'gradient', heroTone: 'primary',
     heroImage: 'muted', heroFocus: 'center', heroHeight: 'standard',
     heroAlign: def.heroAlign || 'left',
+    officialsLayout: 'rows',
   };
 }
 
@@ -89,6 +91,7 @@ export function normalizeDesign(input) {
     heroFocus: choose(source.heroFocus, DESIGN_OPTIONS.heroFocus, base.heroFocus),
     heroHeight: choose(source.heroHeight, DESIGN_OPTIONS.heroHeight, base.heroHeight),
     heroAlign: choose(source.heroAlign, DESIGN_OPTIONS.heroAlign, base.heroAlign),
+    officialsLayout: choose(source.officialsLayout, DESIGN_OPTIONS.officialsLayout, base.officialsLayout),
   };
 }
 
