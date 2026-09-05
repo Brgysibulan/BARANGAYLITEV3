@@ -1,5 +1,7 @@
 # BRGYWEBLITEV3
 
+**Live website:** https://brgysibulan.github.io/BARANGAYLITEV3/
+
 Logic-first continuation of `Brgysibulan/BRGYWEB-LITE`, using the **same existing Supabase project**, records, Auth accounts, permissions, RPCs, and Storage buckets.
 
 ## Current stage
