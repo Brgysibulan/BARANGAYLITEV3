@@ -123,6 +123,10 @@ small,.muted { color:var(--muted); }
 .official-tier-leader { grid-template-columns:repeat(auto-fit,minmax(170px,210px)); }
 .official-tier-leader .official-photo { width:170px; max-width:100%; }
 .official-tier-councilors { grid-template-columns:repeat(4,minmax(150px,1fr)); }
+[data-officials-layout=pyramid] .official-tier-councilors { grid-template-columns:repeat(3,minmax(150px,190px)); }
+[data-officials-layout=pyramid] .official-tier-councilors > :nth-last-child(1):nth-child(3n+1) { grid-column:2; }
+[data-officials-layout=pyramid] .official-tier-councilors > :nth-last-child(2):nth-child(3n+2) { grid-column:1/span 2; justify-self:end; }
+[data-officials-layout=compact] .official-tier-councilors { grid-template-columns:repeat(5,minmax(120px,1fr)); }
 .official-tier-councilors .official-photo { width:118px; max-width:100%; }
 .official-tier-support { grid-template-columns:repeat(3,minmax(145px,190px)); }
 .official-tier-sk-support { grid-template-columns:repeat(2,minmax(145px,190px)); }
