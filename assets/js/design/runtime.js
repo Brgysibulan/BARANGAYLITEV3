@@ -26,6 +26,7 @@ export function applyDesign(value, root = document.documentElement) {
   root.dataset.heroFocus = config.heroFocus;
   root.dataset.heroHeight = config.heroHeight;
   root.dataset.heroAlign = config.heroAlign;
+  root.dataset.officialsLayout = config.officialsLayout;
   root.style.setProperty('--primary', config.primary);
   root.style.setProperty('--on-primary', contrastText(config.primary));
   // The same validated panel color/foreground pair is used in previews and live shells.
