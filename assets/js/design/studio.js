@@ -1,7 +1,7 @@
 /**
  * Purpose: central layout, color, and typography editor with an isolated draft preview.
  * Depends on: model.js, preview.html, and an optional authenticated design service.
- * Debug: draft stays in memory; only the explicit confirmed Publish action can call save.
+ * Debug: draft stays in memory; section Save merges only its keys into the baseline; Save all retains confirmation.
  */
 import { element as el } from '../core/dom.js';
 import { PRESETS, presetDesign, normalizeDesign, sameDesign } from './model.js';
@@ -13,20 +13,22 @@ export function mountStudio(root, { snapshot = { config: presetDesign() }, servi
   let busy = false;
   let disposed = false;
   let surface = 'public';
+  const sections = [];
+  let pendingSection = null;
   const channel = crypto.randomUUID();
   const heading = el('div', '', { class: 'studio-heading' });
   const headingCopy = el('div');
-  headingCopy.append(el('p', 'WORKSPACE / APPEARANCE', { class: 'eyebrow muted' }), el('h1', 'Design Studio'), el('p', 'One identity. Every screen. Combine layouts, colors, typography, surfaces, cards, navigation, and hero treatments before publishing.', { class: 'muted' }));
+  headingCopy.append(el('p', 'WORKSPACE / APPEARANCE', { class: 'eyebrow muted' }), el('h1', 'Design Studio'), el('p', 'Edit one section at a time. Preview your changes, then use its Save button to apply only that section.', { class: 'muted' }));
   const actions = el('div', '', { class: 'studio-actions' });
   const revert = el('button', 'Discard changes', { type: 'button' });
   const reload = el('button', 'Reload published', { type: 'button' });
   reload.hidden = !service;
-  const publish = el('button', service ? 'Publish Everywhere ↗' : 'Preview only', { type: 'button', class: 'primary' });
+  const publish = el('button', service ? 'Save all changes' : 'Preview only', { type: 'button', class: 'primary' });
   actions.append(reload, revert, publish); heading.append(headingCopy, actions);
   // Leave live editing outside the sample iframe; the destination retains existing role checks.
   const editingNote = el('div', '', { class: 'notice studio-editing-note' });
   editingNote.append(el('p', 'This area previews appearance. Edit homepage text, contact details, and maintenance mode in the live Page Settings.'), el('a', 'Open live Page Settings →', { href: service ? '#settings' : 'admin/index.html#settings', class: 'button' }));
-  const message = el('p', service ? 'Published design loaded. Changes stay in preview until you publish.' : 'Safe playground · Sample content only. Sign in to an authorized staff workspace to publish.', { class: 'studio-message', role: 'status', 'aria-live': 'polite' });
+  const message = el('p', service ? 'Published design loaded. Changes stay in preview until you save a section.' : 'Safe playground · Sample content only. Sign in to an authorized staff workspace to publish.', { class: 'studio-message', role: 'status', 'aria-live': 'polite' });
   const confirmation = el('div', '', { class: 'confirmation', hidden: true });
   confirmation.append(el('p', 'Publish this design to Public, System Admin, Content Admin, Login, Application, and Activation? Existing accounts and records will not change.'));
   const confirm = el('button', 'Confirm publish', { type: 'button', class: 'primary' });
@@ -35,7 +37,7 @@ export function mountStudio(root, { snapshot = { config: presetDesign() }, servi
   const layout = el('div', '', { class: 'studio-layout' });
   const controls = el('div', '', { class: 'studio-controls' });
   const themes = el('section', '', { class: 'control-panel' });
-  themes.append(el('h2', '01 / Choose your layout'), el('p', 'Eight structures, each with independently adjustable visual systems.', { class: 'muted' }));
+  themes.append(el('h2', '01 / Choose your layout'), el('p', 'Choose a page structure. Your colors and other section settings are kept.', { class: 'muted' }));
   const themeList = el('div', '', { class: 'theme-list' });
   const themeButtons = [];
   for (const [key, def] of Object.entries(PRESETS)) {
@@ -43,7 +45,7 @@ export function mountStudio(root, { snapshot = { config: presetDesign() }, servi
     const glyph = el('span', '', { class: 'layout-glyph', 'data-layout': key, 'aria-hidden': 'true' });
     for (let i = 0; i < 4; i++) glyph.append(el('span'));
     const copy = el('span'); copy.append(el('strong', def.name), el('small', def.description));
-    button.append(glyph, copy); button.addEventListener('click', () => { draft = presetDesign(key); update(); });
+    button.append(glyph, copy); button.addEventListener('click', () => { draft = { ...draft, preset: key }; update(); });
     themeButtons.push([key, button]); themeList.append(button);
   }
   themes.append(themeList);
@@ -88,7 +90,7 @@ export function mountStudio(root, { snapshot = { config: presetDesign() }, servi
     ['width', 'Page width', [['boxed', 'Boxed'], ['wide', 'Wide'], ['full', 'Full']]],
     ['headerDensity', 'Header spacing', [['compact', 'Compact'], ['comfortable', 'Comfortable'], ['spacious', 'Spacious']]],
   ].forEach(option => addSelect(grid, ...option));
-  tokens.append(grid, el('p', 'Button and colored-panel text contrast is adjusted automatically. All CSS stays in one shared design system.', { class: 'muted' }));
+  tokens.append(grid, el('p', 'Button and colored-panel text contrast is adjusted automatically. Save this section when you are happy with the preview.', { class: 'muted' }));
 
   const heroControls = el('section', '', { class: 'control-panel' });
   heroControls.append(el('h2', '03 / Hero photo & layer'), el('p', 'The saved Dashboard cover remains the source. These options change only how it is presented.', { class: 'muted' }));
@@ -113,12 +115,36 @@ export function mountStudio(root, { snapshot = { config: presetDesign() }, servi
     ['spacing', 'Section spacing', [['compact', 'Compact'], ['comfortable', 'Comfortable'], ['spacious', 'Spacious']]],
     ['navStyle', 'Navigation links', [['underline', 'Underline'], ['pills', 'Pills'], ['boxed', 'Boxed']]],
     ['footerStyle', 'Footer design', [['civic', 'Civic columns'], ['light', 'Light institutional'], ['banded', 'Accent band'], ['minimal', 'Minimal']]],
-    ['officialsLayout', 'Officials arrangement', [['rows', 'Leadership rows'], ['pyramid', 'Triangle / pyramid'], ['compact', 'Compact grid']]],
   ].forEach(option => addSelect(componentGrid, ...option));
   components.append(componentGrid);
   const reset = el('button', 'Reset to Modern LGU default', { type: 'button' });
   reset.addEventListener('click', () => { draft = presetDesign(); update(); message.textContent = 'Default restored in preview only. Publish to make it live.'; });
-  tokens.append(reset); controls.append(themes, tokens, heroControls, components);
+  actions.append(reset);
+  const directory = el('section', '', { class: 'control-panel' });
+  directory.append(el('h2', '05 / Officials arrangement'), el('p', 'Every row is centered automatically, including a single official or an incomplete last row.', { class: 'muted' }));
+  addSelect(directory, 'officialsLayout', 'Arrangement', [['rows', 'Leadership rows · 4 per row'], ['pyramid', 'Triangle / pyramid · 3 per row'], ['compact', 'Compact grid · 5 per row']]);
+  directory.append(el('p', 'Phone layouts adjust to two cards per row. Punong Barangay and SK Chairperson remain centered above their councils.', { class: 'muted' }));
+  /** Explicit ownership prevents a section save from publishing unfinished edits elsewhere. */
+  function section(panel, id, label, keys) {
+    panel.id = `studio-${id}`;
+    const status = el('span', '', { role: 'status', 'aria-live': 'polite' });
+    const save = el('button', `Save ${label}`, { type: 'button', class: 'primary', 'data-save-section': id });
+    const undo = el('button', 'Undo', { type: 'button', 'aria-label': `Undo ${label}` });
+    const footer = el('div', '', { class: 'section-save-bar' }); footer.append(status, undo, save); panel.append(footer);
+    const item = { id, label, keys, status, save, undo, panel }; sections.push(item);
+    save.addEventListener('click', () => saveChanges(item));
+    undo.addEventListener('click', () => { for (const key of keys) draft[key] = baseline.config[key]; update(); message.textContent = `${label} restored to its saved settings.`; });
+  }
+  section(themes, 'layout', 'layout', ['preset']);
+  section(tokens, 'identity', 'colors & typography', ['primary', 'secondary', 'accent', 'font', 'bodyFont', 'corners', 'sidebar', 'width', 'headerDensity']);
+  section(heroControls, 'hero', 'hero', ['heroOverlay', 'heroOverlayStyle', 'heroTone', 'heroImage', 'heroFocus', 'heroHeight', 'heroAlign']);
+  section(components, 'components', 'components', ['surface', 'cardStyle', 'spacing', 'navStyle', 'footerStyle']);
+  section(directory, 'officials', 'officials', ['officialsLayout']);
+  const jumps = el('nav', '', { class: 'studio-section-nav', 'aria-label': 'Design sections' });
+  sections.forEach(item => jumps.append(el('a', item.label, { href: `#studio-${item.id}` })));
+  // Avoid changing the staff workspace hash router when jumping to a design section.
+  jumps.querySelectorAll('a').forEach((link, i) => link.addEventListener('click', event => { event.preventDefault(); sections[i].panel.scrollIntoView({ behavior: 'smooth', block: 'start' }); }));
+  controls.append(jumps, themes, tokens, heroControls, components, directory);
   const preview = el('section', '', { class: 'preview-area', 'aria-label': 'Design preview' });
   const toolbar = el('div', '', { class: 'preview-toolbar' });
   const surfaceSelect = el('select', '', { 'aria-label': 'Preview screen' });
@@ -143,6 +169,14 @@ export function mountStudio(root, { snapshot = { config: presetDesign() }, servi
     draft = normalizeDesign(draft); confirmation.hidden = true;
     themeButtons.forEach(([key, button]) => { button.setAttribute('aria-pressed', key === draft.preset); button.disabled = busy; });
     for (const [key, { input, value, hex }] of Object.entries(inputs)) { input.value = draft[key]; input.disabled = busy; if (value) value.textContent = draft[key].toUpperCase(); if (hex) { hex.value = draft[key].toUpperCase(); hex.disabled = busy; } }
+    for (const item of sections) {
+      const changed = item.keys.some(key => draft[key] !== baseline.config[key]);
+      item.save.disabled = !service || busy || !changed;
+      item.undo.disabled = busy || !changed;
+      item.status.textContent = busy && pendingSection === item ? 'Saving…' : changed ? 'Unsaved changes' : 'Saved';
+      if (!service && !changed) item.status.textContent = 'Preview only';
+      item.panel.dataset.dirty = String(changed);
+    }
     const dirty = !sameDesign(draft, baseline.config);
     publish.disabled = !service || busy || !dirty; revert.disabled = busy || !dirty; reset.disabled = busy; reload.disabled = busy;
     selected.textContent = `${PRESETS[draft.preset].name} · ${dirty ? 'Unpublished draft' : 'Current design'}`;
@@ -164,19 +198,27 @@ export function mountStudio(root, { snapshot = { config: presetDesign() }, servi
   });
   publish.addEventListener('click', () => { confirmation.hidden = false; confirm.focus(); });
   cancel.addEventListener('click', () => { confirmation.hidden = true; publish.focus(); });
-  confirm.addEventListener('click', async () => {
+  confirm.addEventListener('click', () => saveChanges());
+  /** Keep other draft edits and the exact conflict baseline until the existing service confirms success. */
+  async function saveChanges(section = null) {
     if (!service || busy || sameDesign(draft, baseline.config)) return;
-    busy = true; update(); confirm.disabled = true; message.textContent = 'Publishing the shared design…';
+    const next = section ? normalizeDesign({ ...baseline.config, ...Object.fromEntries(section.keys.map(key => [key, draft[key]])) }) : normalizeDesign(draft);
+    pendingSection = section;
+    busy = true; update(); confirm.disabled = true; message.textContent = section ? `Saving ${section.label}…` : 'Publishing the shared design…';
     try {
-      const saved = await service.publish(draft, baseline);
+      const saved = await service.publish(next, baseline);
       if (disposed) return;
-      baseline = saved; onPublished(saved.config); message.textContent = 'Published everywhere. Open screens refresh on focus or within one minute.';
+      baseline = saved;
+      if (section) { for (const key of section.keys) draft[key] = saved.config[key]; }
+      else draft = normalizeDesign(saved.config);
+      onPublished(saved.config); message.textContent = section ? `${section.label} saved. Other unsaved sections remain in preview.` : 'Published everywhere. Open screens refresh on focus or within one minute.';
     } catch (error) { if (!disposed) message.textContent = `Not published: ${error.message}`; }
-    finally { busy = false; confirm.disabled = false; if (!disposed) update(); }
-  });
+    finally { busy = false; pendingSection = null; confirm.disabled = false; if (!disposed) update(); }
+  }
   const beforeUnload = event => { if (!sameDesign(draft, baseline.config)) { event.preventDefault(); event.returnValue = ''; } };
   window.addEventListener('beforeunload', beforeUnload); update();
   const cleanup = () => { disposed = true; window.removeEventListener('message', receive); window.removeEventListener('beforeunload', beforeUnload); };
   cleanup.canLeave = () => !busy && (sameDesign(draft, baseline.config) || window.confirm('Discard unpublished design changes and leave the Design Studio?'));
   return cleanup;
 }
+

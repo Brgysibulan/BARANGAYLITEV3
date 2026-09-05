@@ -267,7 +267,7 @@ test('secondary draft calls the existing publish service only after confirmation
     const picker = fixture.root.querySelector('#design-secondary');
     picker.value = '#123456'; picker.dispatchEvent(new window.Event('input'));
     assert.equal(saved.length, 0);
-    fixture.click('Publish Everywhere ↗'); assert.equal(saved.length, 0);
+    fixture.click('Save all changes'); assert.equal(saved.length, 0);
     fixture.click('Confirm publish');
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(saved.length, 1); assert.equal(saved[0].secondary, '#123456');
@@ -338,4 +338,47 @@ test('public footer has structured navigation and preserves configured barangay 
   assert.match(footer.textContent, /Barangay Sibulan/);
   assert.match(footer.textContent, /Transparency & reports/);
   assert.ok(fragment.querySelector('.map-section'));
+});
+
+
+
+// Section publishing must preserve drafts elsewhere and use the last confirmed baseline.
+test('section saves isolate payloads, retain other drafts, and chain saved baselines', async () => {
+  const saved = [];
+  const fixture = studioFixture({ service: { publish: async (config, baseline) => { saved.push({ config: structuredClone(config), baseline }); return { config, raw: { revision: saved.length } }; } } });
+  try {
+    const color = fixture.root.querySelector('#design-primary');
+    color.value = '#123456'; color.dispatchEvent(new window.Event('input'));
+    const hero = fixture.root.querySelector('#design-heroOverlay');
+    hero.value = 'soft'; hero.dispatchEvent(new window.Event('change'));
+    fixture.click('Save hero');
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(saved[0].config.primary, presetDesign().primary);
+    assert.equal(saved[0].config.heroOverlay, 'soft');
+    assert.equal(color.value, '#123456');
+    assert.equal(fixture.root.querySelector('#studio-identity').dataset.dirty, 'true');
+    assert.equal(fixture.root.querySelector('#studio-hero').dataset.dirty, 'false');
+    fixture.click('Save colors & typography');
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(saved[1].config.primary, '#123456');
+    assert.equal(saved[1].config.heroOverlay, 'soft');
+    assert.deepEqual(saved[1].baseline.raw, { revision: 1 });
+  } finally { fixture.cleanup(); }
+});
+test('failed section save preserves changes and Undo affects only its section', async () => {
+  const fixture = studioFixture({ service: { publish: async () => { throw new Error('Conflict'); } } });
+  try {
+    const color = fixture.root.querySelector('#design-primary');
+    color.value = '#123456'; color.dispatchEvent(new window.Event('input'));
+    const hero = fixture.root.querySelector('#design-heroOverlay');
+    hero.value = 'soft'; hero.dispatchEvent(new window.Event('change'));
+    fixture.click('Save hero');
+    await new Promise(resolve => setImmediate(resolve));
+    assert.match(fixture.root.querySelector('.studio-message').textContent, /Conflict/);
+    assert.equal(hero.value, 'soft');
+    assert.equal(fixture.root.querySelector('[data-save-section=hero]').disabled, false);
+    fixture.root.querySelector('[aria-label="Undo hero"]').click();
+    assert.equal(hero.value, presetDesign().heroOverlay);
+    assert.equal(color.value, '#123456');
+  } finally { fixture.cleanup(); }
 });
